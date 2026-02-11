@@ -15,6 +15,7 @@ const CARD_CLASSES = ['card-a', 'card-b', 'card-c']
 const SHOWCASE_CACHE_KEY = 'showcase_images'
 const SHOWCASE_CACHE_TS_KEY = 'showcase_images_ts'
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 min
+const PRELOAD_LIMIT = 12
 
 function getCachedShowcase() {
   try {
@@ -46,7 +47,70 @@ function mapApiToItems(data) {
   }))
 }
 
-const MarqueeImage = ({ item, index, isEager }) => {
+function ensureImagePreconnects(items) {
+  if (typeof document === 'undefined') return
+  const origins = new Set()
+  items.forEach(item => {
+    try {
+      const origin = new URL(item.src).origin
+      origins.add(origin)
+    } catch (_) {}
+  })
+  origins.forEach(origin => {
+    if (!document.querySelector(`link[rel="preconnect"][href="${origin}"]`)) {
+      const link = document.createElement('link')
+      link.rel = 'preconnect'
+      link.href = origin
+      link.crossOrigin = ''
+      document.head.appendChild(link)
+    }
+  })
+}
+
+function injectPreloadLinks(items) {
+  if (typeof document === 'undefined') return []
+  const links = []
+  items.slice(0, PRELOAD_LIMIT).forEach(item => {
+    if (document.querySelector(`link[rel="preload"][as="image"][href="${item.src}"]`)) return
+    const link = document.createElement('link')
+    link.rel = 'preload'
+    link.as = 'image'
+    link.href = item.src
+    link.crossOrigin = 'anonymous'
+    document.head.appendChild(link)
+    links.push(link)
+  })
+  return links
+}
+
+function preloadShowcaseImages(items) {
+  if (typeof window === 'undefined') return Promise.resolve()
+  const targets = items.slice(0, PRELOAD_LIMIT)
+  const tasks = targets.map(item => new Promise((resolve) => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+    const img = new Image()
+    img.decoding = 'async'
+    img.crossOrigin = 'anonymous'
+    img.fetchPriority = 'high'
+    img.onload = finish
+    img.onerror = finish
+    img.src = item.src
+    if (typeof img.decode === 'function') {
+      img.decode().then(finish).catch(finish)
+    }
+  }))
+  const timeout = new Promise(resolve => {
+    setTimeout(resolve, 1500)
+  })
+  return Promise.race([Promise.all(tasks), timeout])
+}
+
+const MarqueeImage = ({ item, isEager }) => {
   const [loaded, setLoaded] = useState(false)
   const onLoad = useCallback(() => setLoaded(true), [])
   return (
@@ -58,6 +122,7 @@ const MarqueeImage = ({ item, index, isEager }) => {
           loading={isEager ? 'eager' : 'lazy'}
           fetchpriority={isEager ? 'high' : undefined}
           decoding="async"
+          draggable="false"
           onLoad={onLoad}
         />
       </div>
@@ -88,24 +153,51 @@ const Marquee = () => {
 
   useEffect(() => {
     let cancelled = false
-    showcaseService.getImages().then((data) => {
-      if (cancelled) return
-      if (Array.isArray(data) && data.length > 0) {
-        const next = mapApiToItems(data)
-        setCachedShowcase(data)
-        setItems(next)
-      } else {
-        setItems(FALLBACK_ITEMS)
+    let preloadLinks = []
+    showcaseService.getImages()
+      .then((data) => {
+        if (cancelled) return
+        if (Array.isArray(data) && data.length > 0) {
+          const next = mapApiToItems(data)
+          setCachedShowcase(data)
+          setItems(next)
+          ensureImagePreconnects(next)
+          preloadLinks = injectPreloadLinks(next)
+          preloadShowcaseImages(next)
+            .catch(() => {})
+            .finally(() => {
+              if (cancelled || preloadLinks.length === 0) return
+              preloadLinks.forEach(link => {
+                if (link && link.parentNode) {
+                  link.parentNode.removeChild(link)
+                }
+              })
+              preloadLinks = []
+            })
+        } else {
+          setItems(FALLBACK_ITEMS)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setItems(FALLBACK_ITEMS)
+      })
+    return () => {
+      cancelled = true
+      if (preloadLinks.length) {
+        preloadLinks.forEach(link => {
+          if (link && link.parentNode) {
+            link.parentNode.removeChild(link)
+          }
+        })
+        preloadLinks = []
       }
-    }).catch(() => {
-      if (!cancelled) setItems(FALLBACK_ITEMS)
-    })
-    return () => { cancelled = true }
+    }
   }, [])
 
   const marqueeItems = items.length > 0 ? items : FALLBACK_ITEMS
   const duplicatedItems = [...marqueeItems, ...marqueeItems]
   const count = marqueeItems.length
+  const eagerThreshold = Math.min(count, PRELOAD_LIMIT)
 
   return (
     <section className="marquee-section">
@@ -115,8 +207,7 @@ const Marquee = () => {
             <MarqueeImage
               key={`${item.src}-${index}`}
               item={item}
-              index={index}
-              isEager={index < 3 || index === count || index === count + 1}
+              isEager={index < eagerThreshold}
             />
           ))}
         </div>
