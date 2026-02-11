@@ -57,6 +57,7 @@ const showcaseHandler = (await import('./showcase.js')).default
 const sectionsHandler = (await import('./sections.js')).default
 const sectionCategoriesHandler = (await import('./section-categories.js')).default
 const bookingsHandler = (await import('./bookings.js')).default
+const settingsHandler = (await import('./settings.js')).default
 
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -184,6 +185,27 @@ app.use('/api/bookings', async (req, res) => {
     sendVercelResponse(res, response)
   } catch (error) {
     console.error('Bookings error:', error)
+    res.status(500).json({ error: error.message, success: false })
+  }
+})
+
+app.get('/api/settings/maintenance', async (req, res) => {
+  try {
+    const vercelReq = createVercelRequest(req)
+    const response = await settingsHandler(vercelReq)
+    sendVercelResponse(res, response)
+  } catch (error) {
+    console.error('Settings error:', error)
+    res.status(500).json({ error: error.message, success: false })
+  }
+})
+app.patch('/api/settings/maintenance', async (req, res) => {
+  try {
+    const vercelReq = createVercelRequest(req)
+    const response = await settingsHandler(vercelReq)
+    sendVercelResponse(res, response)
+  } catch (error) {
+    console.error('Settings error:', error)
     res.status(500).json({ error: error.message, success: false })
   }
 })

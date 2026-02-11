@@ -70,12 +70,18 @@ const Marquee = () => {
   const [items, setItems] = useState(() => cached ? mapApiToItems(cached) : FALLBACK_ITEMS)
 
   useEffect(() => {
-    const apiOrigin = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '')
-    let link = document.querySelector(`link[rel="preconnect"][href="${apiOrigin}"]`)
+    const apiUrl =
+      import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
+        ? import.meta.env.VITE_API_URL.replace(/\/$/, '')
+        : import.meta.env.DEV
+          ? 'http://localhost:3001'
+          : window.location.origin
+    if (!apiUrl) return
+    let link = document.querySelector(`link[rel="preconnect"][href="${apiUrl}"]`)
     if (!link) {
       link = document.createElement('link')
       link.rel = 'preconnect'
-      link.href = apiOrigin
+      link.href = apiUrl
       document.head.appendChild(link)
     }
   }, [])

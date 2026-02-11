@@ -1,6 +1,12 @@
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+// Production: use same origin (Vercel serves both frontend and /api). Dev: use local backend.
+const API_URL =
+  import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
+    ? import.meta.env.VITE_API_URL.replace(/\/$/, '')
+    : import.meta.env.DEV
+      ? 'http://localhost:3001'
+      : ''
 
 const api = axios.create({
   baseURL: API_URL,
