@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { showcaseService } from '../../services/showcaseService'
+import ConfirmDialog from '../common/ConfirmDialog'
 import '../../styles/index.css'
 
 const ShowcaseEditor = ({ onBack }) => {
@@ -7,6 +8,7 @@ const ShowcaseEditor = ({ onBack }) => {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [removingId, setRemovingId] = useState(null)
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null)
   const [altText, setAltText] = useState('')
   const [error, setError] = useState('')
 
@@ -48,8 +50,14 @@ const ShowcaseEditor = ({ onBack }) => {
     }
   }
 
-  const handleRemove = async (id) => {
-    if (!window.confirm('Remove this image from the homepage section?')) return
+  const handleRemoveClick = (id) => {
+    setConfirmRemoveId(id)
+  }
+
+  const handleConfirmRemove = async () => {
+    const id = confirmRemoveId
+    setConfirmRemoveId(null)
+    if (!id) return
     setRemovingId(id)
     setError('')
     try {
@@ -64,6 +72,16 @@ const ShowcaseEditor = ({ onBack }) => {
 
   return (
     <div className="showcase-editor">
+      <ConfirmDialog
+        open={!!confirmRemoveId}
+        title="Remove image?"
+        message="Remove this image from the homepage section?"
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmRemove}
+        onCancel={() => setConfirmRemoveId(null)}
+      />
       <div className="showcase-editor-header">
         <h2 className="showcase-editor-title">Homepage showcase (marquee)</h2>
         <p className="showcase-editor-desc">These images appear in the horizontal strip on the homepage. Add, remove, or reorder.</p>
@@ -105,7 +123,7 @@ const ShowcaseEditor = ({ onBack }) => {
                 type="button"
                 className="showcase-editor-remove"
                 disabled={removingId === img.id}
-                onClick={() => handleRemove(img.id)}
+                onClick={() => handleRemoveClick(img.id)}
               >
                 {removingId === img.id ? 'Removing…' : 'Remove'}
               </button>

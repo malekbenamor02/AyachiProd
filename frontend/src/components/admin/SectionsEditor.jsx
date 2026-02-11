@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { sectionsService, sectionCategoriesService } from '../../services/sectionsService'
+import ConfirmDialog from '../common/ConfirmDialog'
 import '../../styles/index.css'
 
 const MONTHS = [
@@ -143,18 +144,34 @@ const SectionsEditor = ({ onBack }) => {
     }
   }
 
-  const handleRemove = async (id) => {
-    if (!window.confirm('Remove this section from the homepage?')) return
-    setRemovingId(id)
+  const [confirmRemove, setConfirmRemove] = useState(null) // { type: 'section'|'workImage', id, sectionId? }
+
+  const handleRemove = (id) => {
+    setConfirmRemove({ type: 'section', id })
+  }
+
+  const handleConfirmRemove = async () => {
+    if (!confirmRemove) return
+    const { type, id, sectionId } = confirmRemove
+    setConfirmRemove(null)
+    setRemovingId(type === 'section' ? id : null)
+    setRemovingWorkImageId(type === 'workImage' ? id : null)
     setError('')
     try {
-      await sectionsService.deleteSection(id)
-      setToast('Section removed')
-      await load()
+      if (type === 'section') {
+        await sectionsService.deleteSection(id)
+        setToast('Section removed')
+        await load()
+      } else {
+        await sectionsService.deleteWorkImage(sectionId, id)
+        setToast('Image removed')
+        await loadWorkImages(sectionId)
+      }
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Delete failed')
     } finally {
       setRemovingId(null)
+      setRemovingWorkImageId(null)
     }
   }
 
@@ -221,19 +238,8 @@ const SectionsEditor = ({ onBack }) => {
     }
   }
 
-  const handleRemoveWorkImage = async (sectionId, imageId) => {
-    if (!window.confirm('Remove this image from the work gallery?')) return
-    setRemovingWorkImageId(imageId)
-    setError('')
-    try {
-      await sectionsService.deleteWorkImage(sectionId, imageId)
-      setToast('Image removed')
-      await loadWorkImages(sectionId)
-    } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Delete failed')
-    } finally {
-      setRemovingWorkImageId(null)
-    }
+  const handleRemoveWorkImage = (sectionId, imageId) => {
+    setConfirmRemove({ type: 'workImage', id: imageId, sectionId })
   }
 
   const moveWorkImage = async (sectionId, index, direction) => {
@@ -253,8 +259,23 @@ const SectionsEditor = ({ onBack }) => {
     }
   }
 
+  const isSectionRemove = confirmRemove?.type === 'section'
+  const isWorkImageRemove = confirmRemove?.type === 'workImage'
+
   return (
     <div className="sections-editor">
+      <ConfirmDialog
+        open={!!confirmRemove}
+        title={isSectionRemove ? 'Remove section?' : 'Remove image?'}
+        message={isSectionRemove
+          ? 'Remove this section from the homepage?'
+          : 'Remove this image from the work gallery?'}
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmRemove}
+        onCancel={() => setConfirmRemove(null)}
+      />
       <header className="sections-editor-header">
         <h2 className="sections-editor-title">Homepage sections</h2>
         <p className="sections-editor-desc">Manage the project grid below the marquee. Choose a category (or add a new one), set month & year, and use the arrows to set order (first, second, third…).</p>

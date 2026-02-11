@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { galleryService } from '../../services/galleryService'
+import ConfirmDialog from '../common/ConfirmDialog'
 import '../../styles/index.css'
 
 const GalleryList = ({ onSelectGallery, onCreateNew }) => {
@@ -8,6 +9,8 @@ const GalleryList = ({ onSelectGallery, onCreateNew }) => {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null) // { id } when dialog open
+  const [alertError, setAlertError] = useState(null) // { message } for error alert
 
   useEffect(() => {
     loadGalleries()
@@ -26,14 +29,19 @@ const GalleryList = ({ onSelectGallery, onCreateNew }) => {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this gallery?')) return
+  const handleDeleteClick = (id) => {
+    setConfirmDelete({ id })
+  }
 
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete?.id) return
+    const id = confirmDelete.id
+    setConfirmDelete(null)
     try {
       await galleryService.deleteGallery(id)
       loadGalleries()
     } catch (error) {
-      alert('Failed to delete gallery: ' + error.message)
+      setAlertError({ message: 'Failed to delete gallery: ' + (error.message || 'Unknown error') })
     }
   }
 
@@ -43,6 +51,24 @@ const GalleryList = ({ onSelectGallery, onCreateNew }) => {
 
   return (
     <div>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete gallery?"
+        message="Are you sure you want to delete this gallery? This cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
+      <ConfirmDialog
+        open={!!alertError}
+        title="Error"
+        message={alertError?.message || ''}
+        confirmLabel="OK"
+        cancelLabel={null}
+        onConfirm={() => setAlertError(null)}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <h2 style={{ fontSize: '32px', fontWeight: 700, letterSpacing: '-0.05em' }}>Galleries</h2>
         <button
@@ -152,7 +178,7 @@ const GalleryList = ({ onSelectGallery, onCreateNew }) => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      handleDelete(gallery.id)
+                      handleDeleteClick(gallery.id)
                     }}
                     style={{
                       padding: '8px 16px',
