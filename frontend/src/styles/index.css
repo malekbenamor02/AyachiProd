@@ -107,6 +107,20 @@ body {
     transform: none;
 }
 
+/* On mobile, ensure logo and toggle are visible (mix-blend-mode can fail on phones) */
+@media (max-width: 768px) {
+    .header {
+        mix-blend-mode: normal;
+    }
+    .logo {
+        color: #000000;
+    }
+    .menu-toggle,
+    .menu-toggle .plus-icon {
+        color: #000000;
+    }
+}
+
 .menu-overlay {
     position: fixed;
     inset: 0;
