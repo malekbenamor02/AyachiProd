@@ -86,7 +86,7 @@ export default async function handler(req, res) {
   }
 
   // POST /api/galleries/create - Create gallery
-  if (path === '/create' && req.method === 'POST') {
+  if (path === 'create' && req.method === 'POST') {
     try {
       const authResult = requireAdmin(req)
       if (authResult.error) {
