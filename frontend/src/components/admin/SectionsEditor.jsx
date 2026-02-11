@@ -1,0 +1,527 @@
+import React, { useState, useEffect } from 'react'
+import { sectionsService, sectionCategoriesService } from '../../services/sectionsService'
+import '../../styles/index.css'
+
+const MONTHS = [
+  '', 'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+]
+const CURRENT_YEAR = new Date().getFullYear()
+const YEAR_OPTIONS = Array.from({ length: 12 }, (_, i) => CURRENT_YEAR - 5 + i)
+
+const SectionsEditor = ({ onBack }) => {
+  const [sections, setSections] = useState([])
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [removingId, setRemovingId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [error, setError] = useState('')
+  const [toast, setToast] = useState('')
+  const [showNewCategory, setShowNewCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+
+  const [form, setForm] = useState({
+    title: '',
+    category_id: '',
+    section_month: '',
+    section_year: '',
+    alt_text: '',
+  })
+  const [addForm, setAddForm] = useState({
+    title: '',
+    category_id: '',
+    section_month: '',
+    section_year: '',
+    alt_text: '',
+  })
+  const [addFile, setAddFile] = useState(null)
+  const addFileInputRef = React.useRef(null)
+  const [expandedWorkSectionId, setExpandedWorkSectionId] = useState(null)
+  const [workImagesMap, setWorkImagesMap] = useState({})
+  const [uploadingWorkSectionId, setUploadingWorkSectionId] = useState(null)
+  const [removingWorkImageId, setRemovingWorkImageId] = useState(null)
+  const workImageInputRefs = React.useRef({})
+
+  const loadCategories = async () => {
+    try {
+      const data = await sectionCategoriesService.getCategories()
+      setCategories(Array.isArray(data) ? data : [])
+    } catch (_) {
+      setCategories([])
+    }
+  }
+
+  const load = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await sectionsService.getSections()
+      setSections(Array.isArray(data) ? data : [])
+    } catch (e) {
+      setError(e.message || 'Failed to load sections')
+      setSections([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadCategories()
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(''), 3000)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim()
+    if (!name) return
+    setError('')
+    try {
+      const created = await sectionCategoriesService.createCategory(name)
+      await loadCategories()
+      setAddForm((f) => ({ ...f, category_id: created?.id || '' }))
+      setNewCategoryName('')
+      setShowNewCategory(false)
+      setToast('Category added')
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Failed to add category')
+    }
+  }
+
+  const handleAdd = async (e) => {
+    e.preventDefault()
+    const file = addFile || (addFileInputRef.current?.files?.[0])
+    if (!file || !file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+    setUploading(true)
+    setError('')
+    try {
+      await sectionsService.uploadSection(file, {
+        title: addForm.title || 'Untitled',
+        category_id: addForm.category_id || '',
+        section_month: addForm.section_month || '',
+        section_year: addForm.section_year || '',
+        alt_text: addForm.alt_text,
+      })
+      setAddForm({ title: '', category_id: '', section_month: '', section_year: '', alt_text: '' })
+      setAddFile(null)
+      if (addFileInputRef.current) addFileInputRef.current.value = ''
+      setToast('Section added')
+      await load()
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleUpdate = async (id) => {
+    setError('')
+    try {
+      await sectionsService.updateSection(id, {
+        title: form.title,
+        category_id: form.category_id || null,
+        section_month: form.section_month || null,
+        section_year: form.section_year || null,
+        alt_text: form.alt_text,
+      })
+      setEditingId(null)
+      setToast('Section updated')
+      await load()
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Update failed')
+    }
+  }
+
+  const handleRemove = async (id) => {
+    if (!window.confirm('Remove this section from the homepage?')) return
+    setRemovingId(id)
+    setError('')
+    try {
+      await sectionsService.deleteSection(id)
+      setToast('Section removed')
+      await load()
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Delete failed')
+    } finally {
+      setRemovingId(null)
+    }
+  }
+
+  const move = async (index, direction) => {
+    const newOrder = [...sections]
+    const swap = direction === 'up' ? index - 1 : index + 1
+    if (swap < 0 || swap >= newOrder.length) return
+    ;[newOrder[index], newOrder[swap]] = [newOrder[swap], newOrder[index]]
+    const orderedIds = newOrder.map((s) => s.id)
+    setError('')
+    try {
+      await sectionsService.reorderSections(orderedIds)
+      setToast('Order updated')
+      setSections(newOrder)
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Reorder failed')
+    }
+  }
+
+  const startEdit = (section) => {
+    setEditingId(section.id)
+    setForm({
+      title: section.title,
+      category_id: section.category_id || '',
+      section_month: section.section_month ?? '',
+      section_year: section.section_year ?? '',
+      alt_text: section.alt_text || '',
+    })
+  }
+
+  const loadWorkImages = async (sectionId) => {
+    try {
+      const data = await sectionsService.getWorkImages(sectionId)
+      setWorkImagesMap((prev) => ({ ...prev, [sectionId]: Array.isArray(data) ? data : [] }))
+    } catch (_) {
+      setWorkImagesMap((prev) => ({ ...prev, [sectionId]: [] }))
+    }
+  }
+
+  const toggleWorkImages = (sectionId) => {
+    if (expandedWorkSectionId === sectionId) {
+      setExpandedWorkSectionId(null)
+    } else {
+      setExpandedWorkSectionId(sectionId)
+      if (!workImagesMap[sectionId]) loadWorkImages(sectionId)
+    }
+  }
+
+  const handleAddWorkImages = async (sectionId, fileList) => {
+    const files = fileList ? (Array.isArray(fileList) ? fileList : [fileList]) : []
+    if (files.length === 0) return
+    setUploadingWorkSectionId(sectionId)
+    setError('')
+    try {
+      await sectionsService.uploadWorkImage(sectionId, files)
+      setToast(files.length === 1 ? 'File added' : `${files.length} files added`)
+      await loadWorkImages(sectionId)
+      const ref = workImageInputRefs.current[sectionId]
+      if (ref) ref.value = ''
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Upload failed')
+    } finally {
+      setUploadingWorkSectionId(null)
+    }
+  }
+
+  const handleRemoveWorkImage = async (sectionId, imageId) => {
+    if (!window.confirm('Remove this image from the work gallery?')) return
+    setRemovingWorkImageId(imageId)
+    setError('')
+    try {
+      await sectionsService.deleteWorkImage(sectionId, imageId)
+      setToast('Image removed')
+      await loadWorkImages(sectionId)
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Delete failed')
+    } finally {
+      setRemovingWorkImageId(null)
+    }
+  }
+
+  const moveWorkImage = async (sectionId, index, direction) => {
+    const list = workImagesMap[sectionId] || []
+    const swap = direction === 'up' ? index - 1 : index + 1
+    if (swap < 0 || swap >= list.length) return
+    const newOrder = [...list]
+    ;[newOrder[index], newOrder[swap]] = [newOrder[swap], newOrder[index]]
+    const orderedIds = newOrder.map((img) => img.id)
+    setError('')
+    try {
+      await sectionsService.reorderWorkImages(sectionId, orderedIds)
+      setWorkImagesMap((prev) => ({ ...prev, [sectionId]: newOrder }))
+      setToast('Order updated')
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Reorder failed')
+    }
+  }
+
+  return (
+    <div className="sections-editor">
+      <header className="sections-editor-header">
+        <h2 className="sections-editor-title">Homepage sections</h2>
+        <p className="sections-editor-desc">Manage the project grid below the marquee. Choose a category (or add a new one), set month & year, and use the arrows to set order (first, second, third…).</p>
+        <button type="button" onClick={onBack} className="sections-editor-back">
+          ← Back to dashboard
+        </button>
+      </header>
+
+      {error && <div className="sections-editor-error">{error}</div>}
+      {toast && <div className="sections-editor-toast">{toast}</div>}
+
+      <form onSubmit={handleAdd} className="sections-editor-add-card">
+        <h3 className="sections-editor-add-title">Add new section</h3>
+        <div className="sections-editor-add-fields">
+          <label className="sections-editor-field sections-editor-field-file">
+            <span className="sections-editor-label">Image</span>
+            <span className="sections-editor-file-wrap">
+              <input
+                ref={addFileInputRef}
+                type="file"
+                accept="image/*"
+                required
+                disabled={uploading}
+                onChange={(e) => setAddFile(e.target.files?.[0])}
+                className="sections-editor-file-input"
+              />
+              <span className="sections-editor-file-label">
+                {addFile ? addFile.name : 'Choose image'}
+              </span>
+            </span>
+          </label>
+          <label className="sections-editor-field">
+            <span className="sections-editor-label">Title</span>
+            <input
+              type="text"
+              placeholder="e.g. Wedding Collection"
+              value={addForm.title}
+              onChange={(e) => setAddForm((f) => ({ ...f, title: e.target.value }))}
+              className="sections-editor-input"
+            />
+          </label>
+          <label className="sections-editor-field">
+            <span className="sections-editor-label">Category</span>
+            {!showNewCategory ? (
+              <div className="sections-editor-category-row">
+                <select
+                  value={addForm.category_id}
+                  onChange={(e) => setAddForm((f) => ({ ...f, category_id: e.target.value }))}
+                  className="sections-editor-input sections-editor-select"
+                >
+                  <option value="">Select category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => setShowNewCategory(true)} className="sections-editor-btn sections-editor-btn-ghost" style={{ flexShrink: 0 }}>+ New</button>
+              </div>
+            ) : (
+              <div className="sections-editor-category-row">
+                <input
+                  type="text"
+                  placeholder="New category name"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="sections-editor-input"
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+                />
+                <button type="button" onClick={handleAddCategory} className="sections-editor-btn sections-editor-btn-primary" style={{ flexShrink: 0 }}>Add</button>
+                <button type="button" onClick={() => { setShowNewCategory(false); setNewCategoryName('') }} className="sections-editor-btn sections-editor-btn-ghost" style={{ flexShrink: 0 }}>Cancel</button>
+              </div>
+            )}
+          </label>
+          <label className="sections-editor-field">
+            <span className="sections-editor-label">Month</span>
+            <select
+              value={addForm.section_month}
+              onChange={(e) => setAddForm((f) => ({ ...f, section_month: e.target.value }))}
+              className="sections-editor-input sections-editor-select"
+            >
+              <option value="">—</option>
+              {MONTHS.slice(1).map((m, i) => (
+                <option key={m} value={i + 1}>{m}</option>
+              ))}
+            </select>
+          </label>
+          <label className="sections-editor-field sections-editor-field-year">
+            <span className="sections-editor-label">Year</span>
+            <select
+              value={addForm.section_year}
+              onChange={(e) => setAddForm((f) => ({ ...f, section_year: e.target.value }))}
+              className="sections-editor-input sections-editor-select"
+            >
+              <option value="">—</option>
+              {YEAR_OPTIONS.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </label>
+          <div className="sections-editor-field sections-editor-field-submit">
+            <button type="submit" disabled={uploading} className="sections-editor-btn sections-editor-btn-primary">
+              {uploading ? 'Adding…' : 'Add section'}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {loading ? (
+        <div className="sections-editor-loading">
+          <span className="sections-editor-loading-spinner" />
+          <p>Loading sections…</p>
+        </div>
+      ) : (
+        <div className="sections-editor-list">
+          {sections.map((section, index) => (
+            <article key={section.id} className="sections-editor-card">
+              <div className="sections-editor-card-order">
+                <span className="sections-editor-card-position" title="Order">{index + 1}</span>
+                <button type="button" onClick={() => move(index, 'up')} disabled={index === 0} title="Move up" aria-label="Move up">↑</button>
+                <button type="button" onClick={() => move(index, 'down')} disabled={index === sections.length - 1} title="Move down" aria-label="Move down">↓</button>
+              </div>
+              <div className="sections-editor-card-body">
+                <div className="sections-editor-card-image-wrap">
+                  <img src={section.file_url} alt={section.alt_text || section.title} className="sections-editor-card-image" />
+                </div>
+                {editingId === section.id ? (
+                  <div className="sections-editor-card-form">
+                    <input
+                      value={form.title}
+                      onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                      placeholder="Title"
+                      className="sections-editor-input"
+                    />
+                    <span className="sections-editor-label">Category</span>
+                    <select
+                      value={form.category_id}
+                      onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
+                      className="sections-editor-input sections-editor-select"
+                    >
+                      <option value="">—</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <span className="sections-editor-label">Month / Year</span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select
+                        value={form.section_month}
+                        onChange={(e) => setForm((f) => ({ ...f, section_month: e.target.value }))}
+                        className="sections-editor-input sections-editor-select"
+                        style={{ flex: 1 }}
+                      >
+                        <option value="">Month</option>
+                        {MONTHS.slice(1).map((m, i) => (
+                          <option key={m} value={i + 1}>{m}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={form.section_year}
+                        onChange={(e) => setForm((f) => ({ ...f, section_year: e.target.value }))}
+                        className="sections-editor-input sections-editor-select"
+                        style={{ width: 90 }}
+                      >
+                        <option value="">Year</option>
+                        {YEAR_OPTIONS.map((y) => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="sections-editor-card-actions">
+                      <button type="button" onClick={() => handleUpdate(section.id)} className="sections-editor-btn sections-editor-btn-primary">Save</button>
+                      <button type="button" onClick={() => setEditingId(null)} className="sections-editor-btn sections-editor-btn-ghost">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h4 className="sections-editor-card-title">{section.title}</h4>
+                    <p className="sections-editor-card-meta">{[section.category, section.date_display || section.year].filter(Boolean).join(' · ') || '—'}</p>
+                    <div className="sections-editor-card-actions">
+                      <button type="button" onClick={() => startEdit(section)} className="sections-editor-btn sections-editor-btn-ghost">Edit</button>
+                      <button
+                        type="button"
+                        className="sections-editor-btn sections-editor-btn-ghost sections-editor-btn-danger"
+                        disabled={removingId === section.id}
+                        onClick={() => handleRemove(section.id)}
+                      >
+                        {removingId === section.id ? 'Removing…' : 'Remove'}
+                      </button>
+                    </div>
+                    <div className="sections-editor-work-images-row">
+                      <button
+                        type="button"
+                        onClick={() => toggleWorkImages(section.id)}
+                        className="sections-editor-btn sections-editor-btn-ghost sections-editor-work-images-btn"
+                      >
+                        Work images ({workImagesMap[section.id]?.length ?? '…'})
+                      </button>
+                    </div>
+                    {expandedWorkSectionId === section.id && (
+                      <div className="sections-editor-work-images-panel">
+                        <div className="sections-editor-work-images-upload">
+                          <input
+                            ref={(el) => { workImageInputRefs.current[section.id] = el }}
+                            type="file"
+                            accept="image/*,video/*,*/*"
+                            multiple
+                            disabled={uploadingWorkSectionId === section.id}
+                            onChange={(e) => {
+                              const files = e.target.files
+                              if (files?.length) handleAddWorkImages(section.id, Array.from(files))
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                          <button
+                            type="button"
+                            disabled={uploadingWorkSectionId === section.id}
+                            onClick={() => workImageInputRefs.current[section.id]?.click()}
+                            className="sections-editor-btn sections-editor-btn-ghost"
+                          >
+                            {uploadingWorkSectionId === section.id ? 'Uploading…' : '+ Add image or video (multiple allowed)'}
+                          </button>
+                        </div>
+                        <div className="sections-editor-work-images-list">
+                          {(workImagesMap[section.id] || []).map((img, wiIndex) => (
+                            <div key={img.id} className="sections-editor-work-images-item">
+                              <div className="sections-editor-work-images-item-order">
+                                <button type="button" onClick={() => moveWorkImage(section.id, wiIndex, 'up')} disabled={wiIndex === 0} title="Move up">↑</button>
+                                <button type="button" onClick={() => moveWorkImage(section.id, wiIndex, 'down')} disabled={wiIndex === (workImagesMap[section.id].length - 1)} title="Move down">↓</button>
+                              </div>
+                              {img.file_type === 'video' ? (
+                                <video src={img.file_url} className="sections-editor-work-images-thumb" muted preload="metadata" />
+                              ) : img.file_type === 'file' ? (
+                                <div className="sections-editor-work-images-thumb sections-editor-work-images-thumb-file">File</div>
+                              ) : (
+                                <img src={img.file_url} alt={img.alt_text || ''} className="sections-editor-work-images-thumb" />
+                              )}
+                              <button
+                                type="button"
+                                className="sections-editor-btn sections-editor-btn-ghost sections-editor-btn-danger"
+                                disabled={removingWorkImageId === img.id}
+                                onClick={() => handleRemoveWorkImage(section.id, img.id)}
+                              >
+                                {removingWorkImageId === img.id ? '…' : 'Remove'}
+                              </button>
+                            </div>
+                          ))}
+                          {(workImagesMap[section.id]?.length ?? 0) === 0 && (
+                            <p className="sections-editor-work-images-empty">No images yet. Add images to show below the poster on the work page.</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </article>
+          ))}
+          {sections.length === 0 && !loading && (
+            <div className="sections-editor-empty">
+              <div className="sections-editor-empty-icon">◻</div>
+              <p className="sections-editor-empty-title">No sections yet</p>
+              <p className="sections-editor-empty-desc">Add your first section above to show it on the homepage project grid.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default SectionsEditor

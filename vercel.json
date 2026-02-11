@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "frontend/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } },
+    { "src": "api/**/*.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/auth/(.*)", "dest": "/api/auth.js" },
+    { "src": "/api/galleries/(.*)", "dest": "/api/galleries.js" },
+    { "src": "/api/client/(.*)", "dest": "/api/client.js" },
+    { "src": "/api/statistics", "dest": "/api/statistics.js" },
+    { "src": "/api/showcase/(.*)", "dest": "/api/showcase.js" },
+    { "src": "/api/showcase", "dest": "/api/showcase.js" },
+    { "src": "/(.*)", "dest": "/frontend/$1" }
+  ],
+  "env": { "NODE_ENV": "production" }
+}

@@ -1,0 +1,15 @@
+# Add these to your api/.env (above or below your R2 block).
+# Without them, the server won't start and login/showcase won't work.
+
+# Supabase – from Supabase Dashboard → Project Settings → API
+#   Project URL → SUPABASE_URL
+#   service_role key (under "Project API keys") → SUPABASE_SERVICE_KEY
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key-here
+
+# JWT – any long random string (used to sign admin login tokens)
+JWT_SECRET=use-a-long-random-string-at-least-32-chars
+
+# Optional (have defaults)
+# CLIENT_TOKEN_EXPIRES_IN=365d
+# FRONTEND_URL=http://localhost:5173

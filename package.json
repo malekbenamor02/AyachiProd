@@ -1,0 +1,15 @@
+{
+  "name": "aziz-ayachi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aziz Ayachi Photography - full project",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:frontend\"",
+    "start": "npm run dev",
+    "dev:api": "npm run dev --prefix api",
+    "dev:frontend": "npm run dev --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
