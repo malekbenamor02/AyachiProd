@@ -4,7 +4,7 @@ import '../../styles/index.css'
 
 const Footer = () => {
   return (
-    <footer className="footer">
+    <footer id="contact" className="footer">
       <div className="footer-content">
         <div className="footer-column footer-brand">
           <h2 className="footer-brand-name">Ayachi Prod</h2>
