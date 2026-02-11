@@ -6,25 +6,30 @@ import AdminDashboard from './pages/AdminDashboard'
 import ClientGallery from './pages/ClientGallery'
 import WorkDetail from './pages/WorkDetail'
 import BookSession from './pages/BookSession'
+import NotFound404 from './pages/NotFound404'
 import ProtectedRoute from './components/admin/ProtectedRoute'
+import MaintenanceGate from './components/admin/MaintenanceGate'
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/book" element={<BookSession />} />
-      <Route path="/work/:id" element={<WorkDetail />} />
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route
-        path="/admin/dashboard"
-        element={
-          <ProtectedRoute>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="/gallery/:token" element={<ClientGallery />} />
-    </Routes>
+    <MaintenanceGate>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/book" element={<BookSession />} />
+        <Route path="/work/:id" element={<WorkDetail />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/gallery/:token" element={<ClientGallery />} />
+        <Route path="*" element={<NotFound404 />} />
+      </Routes>
+    </MaintenanceGate>
   )
 }
 
