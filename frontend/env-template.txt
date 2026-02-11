@@ -1,9 +1,0 @@
-# API URL
-# For local development:
-VITE_API_URL=http://localhost:3001
-# For production (uncomment after deployment):
-# VITE_API_URL=https://api.ayachiprod.com
-
-# Supabase Configuration (if needed in frontend)
-VITE_SUPABASE_URL=https://muhxrtqxhxldfasyffhs.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11aHhydHF4aHhsZGZhc3lmZmhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3NzY1MTcsImV4cCI6MjA4NjM1MjUxN30.6OM1IXffnMdZXVZtsQcPgrFzOC34WACBYYtT6epcEGs
