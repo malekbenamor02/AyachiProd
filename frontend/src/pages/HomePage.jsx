@@ -93,7 +93,7 @@ const HomePage = () => {
         <meta property="og:url" content="https://ayachiprod.com" />
         <meta property="og:title" content="Ayachi Prod - Professional Photographer" />
         <meta property="og:description" content="Professional photographer specializing in weddings, portraits, fashion, and commercial photography. View portfolio and book your session." />
-        <meta property="og:image" content="https://ayachiprod.com/og-image.jpg" />
+        <meta property="og:image" content="https://ayachiprod.com/og-image.png" />
         <meta property="og:site_name" content="Ayachi Prod" />
 
         {/* Twitter */}
@@ -101,7 +101,7 @@ const HomePage = () => {
         <meta name="twitter:url" content="https://ayachiprod.com" />
         <meta name="twitter:title" content="Ayachi Prod - Professional Photographer" />
         <meta name="twitter:description" content="Professional photographer specializing in weddings, portraits, fashion, and commercial photography." />
-        <meta name="twitter:image" content="https://ayachiprod.com/twitter-image.jpg" />
+        <meta name="twitter:image" content="https://ayachiprod.com/og-image.png" />
 
         {/* Structured Data */}
         <script type="application/ld+json">
