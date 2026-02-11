@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Header from '../components/Portfolio/Header'
 import Hero from '../components/Portfolio/Hero'
 import Marquee from '../components/Portfolio/Marquee'
@@ -10,6 +10,17 @@ import Footer from '../components/Portfolio/Footer'
 import Cursor from '../components/common/Cursor'
 
 const HomePage = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (location.state?.scrollToContact) {
+      const el = document.getElementById('contact')
+      if (el) el.scrollIntoView({ behavior: 'smooth' })
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.state, location.pathname, navigate])
+
   // Structured Data for SEO
   const organizationSchema = {
     "@context": "https://schema.org",

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import '../../styles/index.css'
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (!menuOpen) return
@@ -16,10 +18,21 @@ const Header = () => {
     }
   }, [menuOpen])
 
+  const closeMenu = () => setMenuOpen(false)
+
+  const handleContactClick = () => {
+    closeMenu()
+    if (location.pathname === '/') {
+      document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      navigate('/', { state: { scrollToContact: true } })
+    }
+  }
+
   return (
     <header className="header">
       <div className="header-container">
-        <Link to="/" className="logo" onClick={() => setMenuOpen(false)}>
+        <Link to="/" className="logo" onClick={closeMenu}>
           Aziz Ayachi
         </Link>
         <button
@@ -40,18 +53,32 @@ const Header = () => {
           aria-modal="true"
           aria-label="Actions menu"
         >
-          <div className="menu-overlay-backdrop" onClick={() => setMenuOpen(false)} />
-          <nav className="menu-overlay-nav">
-            <Link to="/book" className="menu-overlay-link" onClick={() => setMenuOpen(false)}>
-              Book a session
-            </Link>
-            <a href="/#contact" className="menu-overlay-link" onClick={() => setMenuOpen(false)}>
-              Contact
-            </a>
-            <Link to="/admin/login" className="menu-overlay-link" onClick={() => setMenuOpen(false)}>
-              Login
-            </Link>
-          </nav>
+          <div className="menu-overlay-backdrop" onClick={closeMenu} aria-hidden="true" />
+          <div className="menu-overlay-panel">
+            <button
+              type="button"
+              className="menu-overlay-close"
+              aria-label="Close menu"
+              onClick={closeMenu}
+            >
+              ×
+            </button>
+            <nav className="menu-overlay-nav">
+              <Link to="/book" className="menu-overlay-link" onClick={closeMenu}>
+                Book a session
+              </Link>
+              <button
+                type="button"
+                className="menu-overlay-link menu-overlay-link-button"
+                onClick={handleContactClick}
+              >
+                Contact
+              </button>
+              <Link to="/admin/login" className="menu-overlay-link" onClick={closeMenu}>
+                Login
+              </Link>
+            </nav>
+          </div>
         </div>
       )}
     </header>
