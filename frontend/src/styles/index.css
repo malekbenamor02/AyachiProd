@@ -112,10 +112,18 @@ body {
     inset: 0;
     z-index: 9998;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-start;
+    justify-content: flex-end;
     padding: 24px;
+    padding-top: 88px;
+    padding-right: 96px;
     animation: menu-overlay-in 0.25s ease-out;
+}
+@media (max-width: 768px) {
+    .menu-overlay {
+        padding-right: 24px;
+        padding-top: 72px;
+    }
 }
 @keyframes menu-overlay-in {
     from { opacity: 0; }
@@ -131,27 +139,28 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    min-width: 200px;
+    align-items: stretch;
+    gap: 10px;
+    min-width: 220px;
 }
 .menu-overlay-link {
     display: block;
     padding: 14px 24px;
     color: #FFFFFF;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     letter-spacing: -0.02em;
     text-decoration: none;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: 8px;
     width: 100%;
     text-align: center;
-    transition: background 0.2s, border-color 0.2s;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 .menu-overlay-link:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.6);
 }
 
 .header-cta {
