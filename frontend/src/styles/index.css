@@ -119,13 +119,17 @@ body {
     transform: none;
 }
 
-/* Mobile: keep mix-blend but add dark outline so logo/toggle visible on white background */
+/* Mobile only: first half of page has white/light bg — use dark logo so it's visible */
 @media (max-width: 768px) {
-    .logo {
-        text-shadow: 0 0 1px rgba(0, 0, 0, 0.7), 0 0 2px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+    .header.header--top-half {
+        mix-blend-mode: normal;
     }
-    .menu-toggle .plus-icon {
-        text-shadow: 0 0 1px rgba(0, 0, 0, 0.7), 0 0 2px rgba(0, 0, 0, 0.5);
+    .header.header--top-half .logo {
+        color: #000000;
+    }
+    .header.header--top-half .menu-toggle,
+    .header.header--top-half .menu-toggle .plus-icon {
+        color: #000000;
     }
 }
 
