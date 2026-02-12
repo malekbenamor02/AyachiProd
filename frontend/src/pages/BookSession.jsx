@@ -117,6 +117,9 @@ const BookSession = () => {
       <>
         <Helmet>
           <title>Booking Received - Ayachi Prod</title>
+          <meta name="description" content="Your session request has been received. We will get back to you soon." />
+          <meta name="robots" content="noindex, nofollow" />
+          <link rel="canonical" href="https://ayachiprod.com/book" />
         </Helmet>
         <Cursor />
         <Header />
@@ -140,7 +143,22 @@ const BookSession = () => {
   return (
     <>
       <Helmet>
-        <title>Book a Session - Ayachi Prod</title>
+        <title>Book a Session - Ayachi Prod | Professional Photography</title>
+        <meta name="description" content="Book a photography session with Ayachi Prod. Weddings, portraits, fashion, and events. Fill in your details and we'll get back to you." />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://ayachiprod.com/book" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://ayachiprod.com/book" />
+        <meta property="og:title" content="Book a Session - Ayachi Prod" />
+        <meta property="og:description" content="Book a photography session. Weddings, portraits, fashion, and events. We'll get back to you to confirm." />
+        <meta property="og:image" content="https://ayachiprod.com/og-image.png" />
+        <meta property="og:site_name" content="Ayachi Prod" />
+        <meta property="og:locale" content="en_US" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content="https://ayachiprod.com/book" />
+        <meta name="twitter:title" content="Book a Session - Ayachi Prod" />
+        <meta name="twitter:description" content="Book a photography session. Weddings, portraits, fashion, and events." />
+        <meta name="twitter:image" content="https://ayachiprod.com/og-image.png" />
       </Helmet>
       <Cursor />
       <Header />
@@ -220,7 +238,7 @@ const BookSession = () => {
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
-                {loadingCat && <span className="book-session-hint">Loading categoriesâ€¦</span>}
+                {loadingCat && <span className="book-session-hint">Loading categories…</span>}
               </div>
 
               <div className="book-session-field book-session-field--reveal">
@@ -258,14 +276,14 @@ const BookSession = () => {
                 value={form.description}
                 onChange={handleChange}
                 required
-                placeholder="What you want exactly, location ideas, or any notesâ€¦"
+                placeholder="What you want exactly, location ideas, or any notes…"
                 rows={4}
               />
             </div>
 
             <div className="book-session-submit-wrap">
               <button type="submit" className="book-session-submit" disabled={submitting}>
-                {submitting ? 'Sendingâ€¦' : 'Send request'}
+                {submitting ? 'Sending…' : 'Send request'}
               </button>
             </div>
           </form>

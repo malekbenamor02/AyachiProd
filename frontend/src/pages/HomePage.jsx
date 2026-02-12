@@ -87,6 +87,16 @@ const HomePage = () => {
     }
   }
 
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Ayachi Prod",
+    "url": "https://ayachiprod.com",
+    "description": "Professional photographer specializing in weddings, portraits, fashion, and commercial photography",
+    "publisher": { "@type": "Photographer", "name": "Aziz Ayachi" },
+    "inLanguage": "en"
+  }
+
   return (
     <>
       <Helmet>
@@ -102,17 +112,20 @@ const HomePage = () => {
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://ayachiprod.com" />
-        <meta property="og:title" content="Ayachi Prod - Professional Photographer" />
+        <meta property="og:title" content="Ayachi Prod - Professional Photographer | Wedding, Portrait & Event Photography" />
         <meta property="og:description" content="Professional photographer specializing in weddings, portraits, fashion, and commercial photography. View portfolio and book your session." />
         <meta property="og:image" content="https://ayachiprod.com/og-image.png" />
+        <meta property="og:image:alt" content="Ayachi Prod - Professional Photographer" />
         <meta property="og:site_name" content="Ayachi Prod" />
+        <meta property="og:locale" content="en_US" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content="https://ayachiprod.com" />
-        <meta name="twitter:title" content="Ayachi Prod - Professional Photographer" />
+        <meta name="twitter:title" content="Ayachi Prod - Professional Photographer | Wedding, Portrait & Event Photography" />
         <meta name="twitter:description" content="Professional photographer specializing in weddings, portraits, fashion, and commercial photography." />
         <meta name="twitter:image" content="https://ayachiprod.com/og-image.png" />
+        <meta name="twitter:image:alt" content="Ayachi Prod - Professional Photographer" />
 
         {/* Structured Data */}
         <script type="application/ld+json">
@@ -120,6 +133,9 @@ const HomePage = () => {
         </script>
         <script type="application/ld+json">
           {JSON.stringify(serviceSchema)}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(websiteSchema)}
         </script>
       </Helmet>
 

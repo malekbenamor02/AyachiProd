@@ -1,0 +1,8 @@
+# Ayachi Prod - Professional Photographer
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /gallery/
+
+# Sitemap
+Sitemap: https://ayachiprod.com/sitemap.xml

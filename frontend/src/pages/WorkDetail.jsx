@@ -68,9 +68,34 @@ const WorkDetail = () => {
   return (
     <>
       <Helmet>
-        <title>{section.title} — Aziz Ayachi Photography</title>
-        <meta name="description" content={`${section.title}${section.category ? ` · ${section.category}` : ''}${section.date_display ? ` · ${section.date_display}` : ''}`} />
+        <title>{section.title} — Ayachi Prod | Professional Photographer</title>
+        <meta name="description" content={`${section.title}${section.category ? ` · ${section.category}` : ''}${section.date_display ? ` · ${section.date_display}` : ''}. Portfolio by Ayachi Prod.`} />
         <meta name="robots" content="index, follow" />
+        <link rel="canonical" href={`https://ayachiprod.com/work/${section.id}`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`https://ayachiprod.com/work/${section.id}`} />
+        <meta property="og:title" content={`${section.title} — Ayachi Prod`} />
+        <meta property="og:description" content={`${section.title}${section.category ? ` · ${section.category}` : ''}${section.date_display ? ` · ${section.date_display}` : ''}`} />
+        <meta property="og:image" content={section.file_url || 'https://ayachiprod.com/og-image.png'} />
+        <meta property="og:image:alt" content={section.alt_text || section.title} />
+        <meta property="og:site_name" content="Ayachi Prod" />
+        <meta property="og:locale" content="en_US" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={`https://ayachiprod.com/work/${section.id}`} />
+        <meta name="twitter:title" content={`${section.title} — Ayachi Prod`} />
+        <meta name="twitter:description" content={`${section.title}${section.category ? ` · ${section.category}` : ''}`} />
+        <meta name="twitter:image" content={section.file_url || 'https://ayachiprod.com/og-image.png'} />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ayachiprod.com' },
+              { '@type': 'ListItem', position: 2, name: 'Work', item: 'https://ayachiprod.com/#projects' },
+              { '@type': 'ListItem', position: 3, name: section.title }
+            ]
+          })}
+        </script>
       </Helmet>
       <Cursor />
       <Header />
