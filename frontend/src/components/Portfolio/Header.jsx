@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import '../../styles/index.css'
 
@@ -29,22 +30,24 @@ const Header = () => {
     }
   }
 
-  return (
-    <header className="header">
-      <div className="header-container">
-        <Link to="/" className="logo" onClick={closeMenu}>
-          Aziz Ayachi
-        </Link>
-        <button
-          type="button"
-          className={`menu-toggle ${menuOpen ? 'menu-toggle--open' : ''}`}
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          <span className="plus-icon">{menuOpen ? '×' : '+'}</span>
-        </button>
-      </div>
+  const headerContent = (
+    <>
+      <header className="header">
+        <div className="header-container">
+          <Link to="/" className="logo" onClick={closeMenu}>
+            Aziz Ayachi
+          </Link>
+          <button
+            type="button"
+            className={`menu-toggle ${menuOpen ? 'menu-toggle--open' : ''}`}
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <span className="plus-icon">{menuOpen ? '×' : '+'}</span>
+          </button>
+        </div>
+      </header>
 
       {menuOpen && (
         <div
@@ -81,8 +84,10 @@ const Header = () => {
           </div>
         </div>
       )}
-    </header>
+    </>
   )
+
+  return createPortal(headerContent, document.body)
 }
 
 export default Header
