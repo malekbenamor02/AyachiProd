@@ -58,7 +58,7 @@ body {
     box-shadow: 0 0 0 1px #fff;
 }
 
-/* Navigation Header */
+/* Navigation Header — fixed at top, does not scroll */
 .header {
     position: fixed;
     top: 0;
@@ -67,6 +67,8 @@ body {
     z-index: 1000;
     mix-blend-mode: difference;
     pointer-events: none;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 .header-container {
@@ -119,10 +121,15 @@ body {
     transform: none;
 }
 
-/* Mobile only: keep logo and toggle black so visible on light background at top */
+/* Mobile only: fixed at top (no scroll), black logo/toggle visible on light */
 @media (max-width: 768px) {
     .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
         mix-blend-mode: normal;
+        transform: translateZ(0);
     }
     .header .logo {
         color: #000000;
