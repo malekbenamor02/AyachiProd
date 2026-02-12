@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import '../../styles/index.css'
 
 const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
@@ -52,6 +53,8 @@ const ThemeDatePicker = ({ value, onChange, min, id, name, className = '', place
     return d ? { year: d.getFullYear(), month: d.getMonth() } : { year: new Date().getFullYear(), month: new Date().getMonth() }
   })
   const containerRef = useRef(null)
+  const dropdownRef = useRef(null)
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 280 })
 
   const minDate = min ? parseYMD(min) : null
   const valueDate = value ? parseYMD(value) : null
@@ -59,9 +62,32 @@ const ThemeDatePicker = ({ value, onChange, min, id, name, className = '', place
   today.setHours(0, 0, 0, 0)
 
   useEffect(() => {
+    if (!open || !containerRef.current) return
+    const updatePosition = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        setPosition({
+          top: rect.bottom + 8,
+          left: rect.left,
+          width: Math.max(280, Math.min(320, rect.width)),
+        })
+      }
+    }
+    updatePosition()
+    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('resize', updatePosition)
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
+    }
+  }, [open])
+
+  useEffect(() => {
     if (!open) return
     const handle = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false)
+      const inTrigger = containerRef.current && containerRef.current.contains(e.target)
+      const inDropdown = dropdownRef.current && dropdownRef.current.contains(e.target)
+      if (!inTrigger && !inDropdown) setOpen(false)
     }
     const escape = (e) => { if (e.key === 'Escape') setOpen(false) }
     document.addEventListener('mousedown', handle)
@@ -131,8 +157,22 @@ const ThemeDatePicker = ({ value, onChange, min, id, name, className = '', place
         <span className={displayText ? '' : 'theme-date-picker-placeholder'}>{displayText || placeholder}</span>
         <span className="theme-date-picker-chevron" aria-hidden>▼</span>
       </button>
-      {open && (
-        <div className="theme-date-picker-dropdown" role="dialog" aria-label="Choose date">
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          className="theme-date-picker-dropdown theme-date-picker-dropdown--portal"
+          role="dialog"
+          aria-label="Choose date"
+          style={{
+            position: 'fixed',
+            top: position.top,
+            left: position.left,
+            width: position.width,
+            minWidth: 280,
+            maxWidth: 320,
+            zIndex: 10001,
+          }}
+        >
           <div className="theme-date-picker-header">
             <button type="button" className="theme-date-picker-nav" onClick={prevMonth} aria-label="Previous month">
               ←
@@ -177,7 +217,8 @@ const ThemeDatePicker = ({ value, onChange, min, id, name, className = '', place
               Today
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

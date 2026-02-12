@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { galleryService } from '../../services/galleryService'
+import ThemeDatePicker from '../common/ThemeDatePicker'
 import '../../styles/index.css'
 
 const GalleryForm = ({ galleryId, onSave, onCancel }) => {
@@ -209,22 +210,15 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
         </div>
 
         <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 400 }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 400 }} htmlFor="event_date">
             Event Date
           </label>
-          <input
-            type="date"
+          <ThemeDatePicker
+            id="event_date"
             name="event_date"
             value={formData.event_date}
-            onChange={handleChange}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid rgba(0, 0, 0, 0.1)',
-              borderRadius: '4px',
-              fontSize: '16px',
-              fontFamily: 'Inter, sans-serif'
-            }}
+            onChange={(val) => setFormData((prev) => ({ ...prev, event_date: val }))}
+            placeholder="Select date"
           />
         </div>
 

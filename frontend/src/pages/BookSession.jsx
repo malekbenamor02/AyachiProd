@@ -5,6 +5,7 @@ import Header from '../components/Portfolio/Header'
 import Footer from '../components/Portfolio/Footer'
 import Cursor from '../components/common/Cursor'
 import ThemeDatePicker from '../components/common/ThemeDatePicker'
+import ThemeTimePicker from '../components/common/ThemeTimePicker'
 import api from '../services/api'
 import { bookingsService } from '../services/bookingsService'
 import '../styles/index.css'
@@ -238,13 +239,12 @@ const BookSession = () => {
 
               <div className="book-session-field book-session-field--reveal">
                 <label className="book-session-label" htmlFor="session_time">Time (optional)</label>
-                <input
+                <ThemeTimePicker
                   id="session_time"
                   name="session_time"
-                  type="time"
-                  className="book-session-input"
                   value={form.session_time}
-                  onChange={handleChange}
+                  onChange={(v) => setForm((prev) => ({ ...prev, session_time: v }))}
+                  placeholder="Select time (optional)"
                 />
               </div>
             </div>

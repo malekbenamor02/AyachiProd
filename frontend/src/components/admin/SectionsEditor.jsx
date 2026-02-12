@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { sectionsService, sectionCategoriesService } from '../../services/sectionsService'
 import ConfirmDialog from '../common/ConfirmDialog'
+import ThemeSelect from '../common/ThemeSelect'
 import '../../styles/index.css'
 
 const MONTHS = [
@@ -9,6 +10,15 @@ const MONTHS = [
 ]
 const CURRENT_YEAR = new Date().getFullYear()
 const YEAR_OPTIONS = Array.from({ length: 12 }, (_, i) => CURRENT_YEAR - 5 + i)
+
+const MONTH_OPTIONS = [
+  { value: '', label: '—' },
+  ...MONTHS.slice(1).map((m, i) => ({ value: String(i + 1), label: m })),
+]
+const YEAR_SELECT_OPTIONS = [
+  { value: '', label: '—' },
+  ...YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) })),
+]
 
 const SectionsEditor = ({ onBack }) => {
   const [sections, setSections] = useState([])
@@ -321,16 +331,14 @@ const SectionsEditor = ({ onBack }) => {
             <span className="sections-editor-label">Category</span>
             {!showNewCategory ? (
               <div className="sections-editor-category-row">
-                <select
+                <ThemeSelect
+                  name="category_id"
                   value={addForm.category_id}
-                  onChange={(e) => setAddForm((f) => ({ ...f, category_id: e.target.value }))}
+                  onChange={(v) => setAddForm((f) => ({ ...f, category_id: v }))}
+                  options={[{ value: '', label: 'Select category' }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]}
+                  placeholder="Select category"
                   className="sections-editor-input sections-editor-select"
-                >
-                  <option value="">Select category</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                />
                 <button type="button" onClick={() => setShowNewCategory(true)} className="sections-editor-btn sections-editor-btn-ghost" style={{ flexShrink: 0 }}>+ New</button>
               </div>
             ) : (
@@ -350,29 +358,25 @@ const SectionsEditor = ({ onBack }) => {
           </label>
           <label className="sections-editor-field">
             <span className="sections-editor-label">Month</span>
-            <select
+            <ThemeSelect
+              name="section_month"
               value={addForm.section_month}
-              onChange={(e) => setAddForm((f) => ({ ...f, section_month: e.target.value }))}
+              onChange={(v) => setAddForm((f) => ({ ...f, section_month: v }))}
+              options={MONTH_OPTIONS}
+              placeholder="—"
               className="sections-editor-input sections-editor-select"
-            >
-              <option value="">—</option>
-              {MONTHS.slice(1).map((m, i) => (
-                <option key={m} value={i + 1}>{m}</option>
-              ))}
-            </select>
+            />
           </label>
           <label className="sections-editor-field sections-editor-field-year">
             <span className="sections-editor-label">Year</span>
-            <select
+            <ThemeSelect
+              name="section_year"
               value={addForm.section_year}
-              onChange={(e) => setAddForm((f) => ({ ...f, section_year: e.target.value }))}
+              onChange={(v) => setAddForm((f) => ({ ...f, section_year: v }))}
+              options={YEAR_SELECT_OPTIONS}
+              placeholder="—"
               className="sections-editor-input sections-editor-select"
-            >
-              <option value="">—</option>
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+            />
           </label>
           <div className="sections-editor-field sections-editor-field-submit">
             <button type="submit" disabled={uploading} className="sections-editor-btn sections-editor-btn-primary">
@@ -409,40 +413,34 @@ const SectionsEditor = ({ onBack }) => {
                       className="sections-editor-input"
                     />
                     <span className="sections-editor-label">Category</span>
-                    <select
+                    <ThemeSelect
+                      name="category_id"
                       value={form.category_id}
-                      onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
+                      onChange={(v) => setForm((f) => ({ ...f, category_id: v }))}
+                      options={[{ value: '', label: '—' }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]}
+                      placeholder="—"
                       className="sections-editor-input sections-editor-select"
-                    >
-                      <option value="">—</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
+                    />
                     <span className="sections-editor-label">Month / Year</span>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <select
+                      <ThemeSelect
+                        name="section_month"
                         value={form.section_month}
-                        onChange={(e) => setForm((f) => ({ ...f, section_month: e.target.value }))}
+                        onChange={(v) => setForm((f) => ({ ...f, section_month: v }))}
+                        options={[{ value: '', label: 'Month' }, ...MONTHS.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))]}
+                        placeholder="Month"
                         className="sections-editor-input sections-editor-select"
                         style={{ flex: 1 }}
-                      >
-                        <option value="">Month</option>
-                        {MONTHS.slice(1).map((m, i) => (
-                          <option key={m} value={i + 1}>{m}</option>
-                        ))}
-                      </select>
-                      <select
+                      />
+                      <ThemeSelect
+                        name="section_year"
                         value={form.section_year}
-                        onChange={(e) => setForm((f) => ({ ...f, section_year: e.target.value }))}
+                        onChange={(v) => setForm((f) => ({ ...f, section_year: v }))}
+                        options={[{ value: '', label: 'Year' }, ...YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))]}
+                        placeholder="Year"
                         className="sections-editor-input sections-editor-select"
                         style={{ width: 90 }}
-                      >
-                        <option value="">Year</option>
-                        {YEAR_OPTIONS.map((y) => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
+                      />
                     </div>
                     <div className="sections-editor-card-actions">
                       <button type="button" onClick={() => handleUpdate(section.id)} className="sections-editor-btn sections-editor-btn-primary">Save</button>
