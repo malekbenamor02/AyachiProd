@@ -81,7 +81,7 @@ const Footer = () => {
       <div className="footer-bottom">
         <p className="footer-copyright">© 2026 Ayachi Prod. All rights reserved.</p>
         <p className="footer-credits">
-          Developed by <a href="https://malekbenamor.dev" className="footer-link" target="_blank" rel="noopener noreferrer">Malek Ben Amor</a>
+          Developed by <a href="https://malekbenamor.dev" className="footer-link">Malek Ben Amor</a>
         </p>
       </div>
     </footer>
