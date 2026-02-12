@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import Header from '../components/Portfolio/Header'
 import Footer from '../components/Portfolio/Footer'
 import Cursor from '../components/common/Cursor'
+import ThemeDatePicker from '../components/common/ThemeDatePicker'
 import api from '../services/api'
 import { bookingsService } from '../services/bookingsService'
 import '../styles/index.css'
@@ -45,6 +46,8 @@ const BookSession = () => {
     load()
     return () => { cancelled = true }
   }, [])
+
+  const today = new Date().toISOString().slice(0, 10)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -221,13 +224,14 @@ const BookSession = () => {
 
               <div className="book-session-field book-session-field--reveal">
                 <label className="book-session-label" htmlFor="session_date">Date</label>
-                <input
+                <ThemeDatePicker
                   id="session_date"
                   name="session_date"
-                  type="date"
-                  className="book-session-input"
                   value={form.session_date}
-                  onChange={handleChange}
+                  onChange={(val) => setForm((prev) => ({ ...prev, session_date: val }))}
+                  min={today}
+                  className="book-session-input"
+                  placeholder="Select date"
                   required
                 />
               </div>
