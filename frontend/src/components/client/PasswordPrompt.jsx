@@ -36,31 +36,21 @@ const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
       overflow: 'hidden'
     }}>
       {backgroundUrl && (
-        <>
-          <div
-            className="client-access-page__bg"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage: `url(${backgroundUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat'
-            }}
-            aria-hidden="true"
-          />
-          <div
-            className="client-access-page__overlay"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundColor: 'rgba(255, 255, 255, 0.4)',
-              backdropFilter: 'blur(1px)',
-              WebkitBackdropFilter: 'blur(1px)'
-            }}
-            aria-hidden="true"
-          />
-        </>
+        <div
+          className="client-access-page__bg"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(${backgroundUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            filter: 'blur(1px)',
+            WebkitFilter: 'blur(1px)',
+            transform: 'scale(1.02)'
+          }}
+          aria-hidden="true"
+        />
       )}
       <div
         className="client-access-page__card"
@@ -70,7 +60,7 @@ const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
           padding: 'clamp(24px, 6vw, 48px)',
           border: '1px solid rgba(0, 0, 0, 0.15)',
           borderRadius: '8px',
-          backgroundColor: backgroundUrl ? 'rgba(255, 255, 255, 0.65)' : '#FFFFFF',
+          backgroundColor: '#FFFFFF',
           boxShadow: '0 4px 24px rgba(0, 0, 0, 0.08)',
           position: 'relative',
           zIndex: 1
