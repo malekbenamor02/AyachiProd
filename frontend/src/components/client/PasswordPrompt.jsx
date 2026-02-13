@@ -45,8 +45,8 @@ const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
-            filter: 'blur(1px)',
-            WebkitFilter: 'blur(1px)',
+            filter: 'blur(4px)',
+            WebkitFilter: 'blur(4px)',
             transform: 'scale(1.02)'
           }}
           aria-hidden="true"
@@ -66,25 +66,6 @@ const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
           zIndex: 1
         }}
       >
-        <h1 style={{
-          fontSize: 'clamp(24px, 5vw, 32px)',
-          fontWeight: 700,
-          letterSpacing: '-0.05em',
-          marginBottom: '16px',
-          textAlign: 'center',
-          color: '#000000'
-        }}>
-          Gallery Access
-        </h1>
-        <p style={{
-          fontSize: 'clamp(14px, 3vw, 16px)',
-          color: '#525252',
-          marginBottom: '32px',
-          textAlign: 'center'
-        }}>
-          Enter the password to access this gallery
-        </p>
-
         <form onSubmit={handleSubmit}>
           {error && (
             <div style={{
