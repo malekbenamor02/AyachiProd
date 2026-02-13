@@ -144,7 +144,7 @@ export async function createMultipartUpload(filePath, contentType = 'application
 }
 
 /**
- * Upload one part of a multipart upload.
+ * Upload one part of a multipart upload (server-side).
  */
 export async function uploadPart(uploadId, filePath, partNumber, body) {
   const command = new UploadPartCommand({
@@ -156,6 +156,21 @@ export async function uploadPart(uploadId, filePath, partNumber, body) {
   })
   const out = await r2Client.send(command)
   return { etag: out.ETag }
+}
+
+/**
+ * Presigned URL for client to upload one part directly to R2 (avoids Vercel body limit).
+ * S3/R2 minimum part size is 5 MB except for the last part.
+ */
+export async function getPresignedUploadPartUrl(uploadId, filePath, partNumber, expiresIn = 900) {
+  const command = new UploadPartCommand({
+    Bucket: BUCKET_NAME,
+    Key: filePath,
+    UploadId: uploadId,
+    PartNumber: partNumber,
+  })
+  const url = await getSignedUrl(r2Client, command, { expiresIn })
+  return url
 }
 
 /**

@@ -157,11 +157,12 @@ app.all('/api/sections', async (req, res) => {
 })
 app.all('/api/sections/*', async (req, res) => {
   try {
-    // Pass raw req for multipart upload and for upload-part (binary body). Other work-images routes need parsed JSON body.
+    // Raw req only for: (1) multipart POST .../work-images/upload, (2) binary POST .../work-images/upload-part.
+    // All other work-images routes (upload-init, upload-part-url, upload-complete, upload-abort) get parsed JSON body.
     const path = (req.originalUrl || req.url || '').split('?')[0]
     const isMultipartUpload = req.method === 'POST' && path.endsWith('/work-images/upload') && !path.includes('upload-url') && !path.includes('upload-init') && !path.includes('upload-part') && !path.includes('upload-complete')
-    const isUploadPart = req.method === 'POST' && path.includes('/work-images/upload-part')
-    const request = isMultipartUpload || isUploadPart ? req : createVercelRequest(req)
+    const isUploadPartBinary = req.method === 'POST' && path.endsWith('/work-images/upload-part')
+    const request = isMultipartUpload || isUploadPartBinary ? req : createVercelRequest(req)
     const response = await sectionsHandler(request, res)
     sendVercelResponse(res, response)
   } catch (error) {

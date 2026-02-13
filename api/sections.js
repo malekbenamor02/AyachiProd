@@ -10,6 +10,7 @@ import {
   uploadPart,
   completeMultipartUpload,
   abortMultipartUpload,
+  getPresignedUploadPartUrl,
 } from './_utils/r2.js'
 import { successResponse, errorResponse, corsHeaders, parseBody } from './_utils/helpers.js'
 import { handleCORS } from './_middleware/auth.js'
@@ -358,7 +359,7 @@ export default async function handler(req, res) {
     }
   }
 
-  const CHUNK_SIZE = 4 * 1024 * 1024 // 4MB per chunk to stay under Vercel body limit
+  const CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB min part size (S3/R2); parts use presigned URLs (no large body through Vercel)
 
   // POST /api/sections/:sectionId/work-images/upload-init - Start chunked upload (large files)
   if (pathParts.length === 3 && pathParts[2] === 'upload-init' && isWorkImages && req.method === 'POST') {
@@ -381,6 +382,28 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('Work images upload-init error:', err)
       return errorResponse(err.message || 'Failed to init upload', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/sections/:sectionId/work-images/upload-part-url - Get presigned URL to upload one part (client PUTs part to R2; 5MB min part size)
+  if (pathParts.length === 3 && pathParts[2] === 'upload-part-url' && isWorkImages && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const uploadId = body?.uploadId && String(body.uploadId).trim()
+      const filePath = body?.filePath && String(body.filePath).trim()
+      const partNumber = parseInt(body?.partNumber, 10)
+      if (!uploadId || !filePath || !partNumber || partNumber < 1) {
+        return errorResponse('Missing uploadId, filePath, or partNumber', 400, 'VALIDATION_ERROR')
+      }
+      const putUrl = await getPresignedUploadPartUrl(uploadId, filePath, partNumber, 900)
+      return successResponse({ putUrl }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Work images upload-part-url error:', err)
+      return errorResponse(err.message || 'Failed to get part URL', 500, 'INTERNAL_ERROR')
     }
   }
 

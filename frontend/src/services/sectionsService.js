@@ -62,8 +62,11 @@ export const sectionsService = {
   },
 
   /**
-   * Upload work images: small files (≤4MB) via single multipart; large files via chunked upload (no limit).
-   * All go to R2 and DB. Progress and retries included.
+   * Upload work images:
+   * - Files ≤4 MB: single multipart POST through API (under Vercel ~4.5 MB body limit).
+   * - Files >4 MB: presigned URLs only — init, then each part via presigned URL (browser PUT to R2), then complete.
+   *   No large body through Vercel; 5 MB min part size (S3/R2). On failure we call upload-abort to avoid orphaned multipart.
+   * R2 bucket CORS must allow PUT from your frontend origin (e.g. https://www.ayachiprod.com).
    */
   async uploadWorkImagesWithProgress(sectionId, files, altText = '', onProgress) {
     const list = Array.isArray(files) ? files : [files]
@@ -72,8 +75,8 @@ export const sectionsService = {
     const MAX_RETRIES = 4
     const RETRY_DELAY_MS = 1500
     const DELAY_BETWEEN_FILES_MS = 200
-    const CHUNK_SIZE = 4 * 1024 * 1024 // 4MB per chunk (under Vercel body limit)
-    const SIMPLE_UPLOAD_MAX = CHUNK_SIZE
+    const CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB min part size (S3/R2); parts uploaded via presigned URL to R2
+    const SIMPLE_UPLOAD_MAX = 4 * 1024 * 1024 // ≤4 MB: through API (stays under Vercel ~4.5 MB limit)
     let successCount = 0
     let lastError = null
 
@@ -126,26 +129,26 @@ export const sectionsService = {
                 const start = (p - 1) * CHUNK_SIZE
                 const end = Math.min(p * CHUNK_SIZE, file.size)
                 const chunk = file.slice(start, end)
-                const partRes = await api.post(`/api/sections/${sectionId}/work-images/upload-part`, chunk, {
-                  headers: {
-                    'Content-Type': 'application/octet-stream',
-                    'X-Upload-Id': uploadId,
-                    'X-File-Path': filePath,
-                    'X-Part-Number': String(p),
-                  },
-                  timeout: 3 * 60 * 1000,
-                  onUploadProgress: (ev) => {
-                    if (ev.total && ev.total > 0 && partCount > 0) {
-                      const partPct = ev.loaded / ev.total
-                      const overall = ((i + (p - 1 + partPct) / partCount) / total) * 100
-                      onProgress?.(Math.round(Math.min(99, overall)))
-                    }
-                  },
+                const urlRes = await api.post(`/api/sections/${sectionId}/work-images/upload-part-url`, {
+                  uploadId,
+                  filePath,
+                  partNumber: p,
                 })
-                const partPayload = partRes?.data?.data ?? partRes?.data
-                const etag = partPayload?.etag
-                if (!etag) throw new Error('Missing etag from part upload')
+                const urlPayload = urlRes?.data?.data ?? urlRes?.data
+                const putUrl = urlPayload?.putUrl
+                if (!putUrl) throw new Error('Missing putUrl for part')
+                // Direct PUT to R2; requires R2 bucket CORS to allow PUT from this origin (e.g. https://www.ayachiprod.com)
+                const putRes = await fetch(putUrl, {
+                  method: 'PUT',
+                  body: chunk,
+                  headers: { 'Content-Type': 'application/octet-stream' },
+                })
+                if (!putRes.ok) throw new Error(`Part upload failed: ${putRes.status}`)
+                let etag = putRes.headers.get('ETag') || putRes.headers.get('etag')
+                if (!etag) throw new Error('Missing ETag from part upload')
+                etag = etag.replace(/^"|"$/g, '')
                 parts.push({ partNumber: p, etag })
+                onProgress?.(Math.round(((i + p / partCount) / total) * 99))
               }
               await api.post(`/api/sections/${sectionId}/work-images/upload-complete`, {
                 uploadId,
@@ -155,6 +158,7 @@ export const sectionsService = {
                 alt_text: altText || '',
               })
             } catch (chunkErr) {
+              // Abort multipart in R2 so we don't leave "Ongoing multipart upload" orphans
               try {
                 await api.post(`/api/sections/${sectionId}/work-images/upload-abort`, { uploadId, filePath })
               } catch (_) {}
