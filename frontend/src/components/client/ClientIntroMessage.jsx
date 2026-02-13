@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import '../../styles/index.css'
 
-const INTRO_DURATION_MS = 2400
-const SHOW_DURATION_MS = 6500
+const INTRO_DURATION_MS = 1500
+const SHOW_DURATION_MS = 4500
 const OUTRO_DURATION_MS = 1000
 
 const ClientIntroMessage = ({ message, onComplete }) => {
