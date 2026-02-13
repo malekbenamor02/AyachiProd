@@ -60,6 +60,25 @@ export const sectionsService = {
     return data?.data
   },
 
+  /**
+   * Upload multiple work images one-by-one with progress (0-100).
+   * More reliable than one big request and gives visible % progress.
+   */
+  async uploadWorkImagesWithProgress(sectionId, files, altText = '', onProgress) {
+    const list = Array.isArray(files) ? files : [files]
+    if (list.length === 0) return
+    for (let i = 0; i < list.length; i++) {
+      const formData = new FormData()
+      formData.append('image', list[i])
+      if (altText) formData.append('alt_text', altText)
+      await api.post(`/api/sections/${sectionId}/work-images/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const percent = Math.round(((i + 1) / list.length) * 100)
+      onProgress?.(percent)
+    }
+  },
+
   async deleteWorkImage(sectionId, imageId) {
     await api.delete(`/api/sections/${sectionId}/work-images/${imageId}`)
   },

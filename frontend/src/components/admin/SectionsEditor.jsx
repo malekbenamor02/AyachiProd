@@ -51,6 +51,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
   const [expandedWorkSectionId, setExpandedWorkSectionId] = useState(null)
   const [workImagesMap, setWorkImagesMap] = useState({})
   const [uploadingWorkSectionId, setUploadingWorkSectionId] = useState(null)
+  const [uploadWorkProgress, setUploadWorkProgress] = useState(null) // 0–100 when uploading work images
   const [removingWorkImageId, setRemovingWorkImageId] = useState(null)
   const workImageInputRefs = React.useRef({})
 
@@ -246,9 +247,20 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
     const files = fileList ? (Array.isArray(fileList) ? fileList : [fileList]) : []
     if (files.length === 0) return
     setUploadingWorkSectionId(sectionId)
+    setUploadWorkProgress(0)
     setError('')
     try {
-      await sectionsService.uploadWorkImage(sectionId, files)
+      if (files.length === 1) {
+        await sectionsService.uploadWorkImage(sectionId, files[0])
+        setUploadWorkProgress(100)
+      } else {
+        await sectionsService.uploadWorkImagesWithProgress(
+          sectionId,
+          files,
+          '',
+          (percent) => setUploadWorkProgress(percent)
+        )
+      }
       setToast(files.length === 1 ? 'File added' : `${files.length} files added`)
       await loadWorkImages(sectionId)
       const ref = workImageInputRefs.current[sectionId]
@@ -258,6 +270,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       setError(err.response?.data?.error || err.message || 'Upload failed')
     } finally {
       setUploadingWorkSectionId(null)
+      setUploadWorkProgress(null)
     }
   }
 
@@ -505,8 +518,18 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
                             onClick={() => workImageInputRefs.current[section.id]?.click()}
                             className="sections-editor-btn sections-editor-btn-ghost"
                           >
-                            {uploadingWorkSectionId === section.id ? 'Uploading…' : '+ Add image or video (multiple allowed)'}
+                            {uploadingWorkSectionId === section.id
+                              ? (uploadWorkProgress != null ? `Uploading… ${uploadWorkProgress}%` : 'Uploading…')
+                              : '+ Add image or video (multiple allowed)'}
                           </button>
+                          {uploadingWorkSectionId === section.id && uploadWorkProgress != null && (
+                            <div className="sections-editor-work-images-progress-wrap">
+                              <div
+                                className="sections-editor-work-images-progress-bar"
+                                style={{ width: `${uploadWorkProgress}%` }}
+                              />
+                            </div>
+                          )}
                         </div>
                         <div className="sections-editor-work-images-list">
                           {(workImagesMap[section.id] || []).map((img, wiIndex) => (

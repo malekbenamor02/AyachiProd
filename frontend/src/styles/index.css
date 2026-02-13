@@ -1468,6 +1468,19 @@ body {
 .sections-editor-work-images-upload {
   margin-bottom: 16px;
 }
+.sections-editor-work-images-progress-wrap {
+  margin-top: 10px;
+  height: 8px;
+  background: #e5e5e5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.sections-editor-work-images-progress-bar {
+  height: 100%;
+  background: #0a0a0a;
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
 .sections-editor-work-images-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
