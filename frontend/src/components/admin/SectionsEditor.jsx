@@ -258,7 +258,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
           sectionId,
           files,
           '',
-          (percent) => setUploadWorkProgress(percent)
+          (percent) => setUploadWorkProgress((p) => (percent != null ? percent : p))
         )
       }
       setToast(files.length === 1 ? 'File added' : `${files.length} files added`)
@@ -267,7 +267,11 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       if (ref) ref.value = ''
       onStatsRefresh?.()
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Upload failed')
+      const message =
+        (err && err.response && err.response.data && typeof err.response.data.error === 'string' && err.response.data.error) ||
+        (err && typeof err.message === 'string' && err.message) ||
+        'Upload failed'
+      setError(message)
     } finally {
       setUploadingWorkSectionId(null)
       setUploadWorkProgress(null)

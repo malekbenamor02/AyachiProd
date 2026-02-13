@@ -62,20 +62,28 @@ export const sectionsService = {
 
   /**
    * Upload multiple work images one-by-one with progress (0-100).
-   * More reliable than one big request and gives visible % progress.
+   * Uses onUploadProgress so % moves during each file (not stuck at 0%).
    */
   async uploadWorkImagesWithProgress(sectionId, files, altText = '', onProgress) {
     const list = Array.isArray(files) ? files : [files]
     if (list.length === 0) return
+    const total = list.length
     for (let i = 0; i < list.length; i++) {
+      onProgress?.(Math.round((i / total) * 100))
       const formData = new FormData()
       formData.append('image', list[i])
       if (altText) formData.append('alt_text', altText)
       await api.post(`/api/sections/${sectionId}/work-images/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (ev) => {
+          if (ev.total && ev.total > 0) {
+            const filePct = ev.loaded / ev.total
+            const overall = ((i + filePct) / total) * 100
+            onProgress?.(Math.round(Math.min(99, overall)))
+          }
+        },
       })
-      const percent = Math.round(((i + 1) / list.length) * 100)
-      onProgress?.(percent)
+      onProgress?.(Math.round(((i + 1) / total) * 100))
     }
   },
 
