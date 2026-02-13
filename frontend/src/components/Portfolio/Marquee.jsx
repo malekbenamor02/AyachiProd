@@ -110,11 +110,38 @@ function preloadShowcaseImages(items) {
   return Promise.race([Promise.all(tasks), timeout])
 }
 
+const TAP_REVEAL_MS = 1800
+
 const MarqueeImage = ({ item, isEager }) => {
   const [loaded, setLoaded] = useState(false)
+  const [touchActive, setTouchActive] = useState(false)
+  const tapTimerRef = React.useRef(null)
   const onLoad = useCallback(() => setLoaded(true), [])
+
+  const handleTouchStart = useCallback(() => setTouchActive(true), [])
+  const handleTouchEnd = useCallback(() => setTouchActive(false), [])
+
+  const handleClick = useCallback(() => {
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current)
+    setTouchActive(true)
+    tapTimerRef.current = setTimeout(() => {
+      setTouchActive(false)
+      tapTimerRef.current = null
+    }, TAP_REVEAL_MS)
+  }, [])
+
+  React.useEffect(() => () => {
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current)
+  }, [])
+
   return (
-    <div className={`marquee-item ${item.cardClass}`}>
+    <div
+      className={`marquee-item ${item.cardClass}${touchActive ? ' touch-active' : ''}`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      onClick={handleClick}
+    >
       <div className={`marquee-image ${loaded ? 'marquee-image-loaded' : ''}`}>
         <img
           src={item.src}

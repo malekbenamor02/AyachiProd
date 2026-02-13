@@ -570,10 +570,12 @@ body {
 }
 
 .marquee-item:hover .marquee-image img {
+    filter: grayscale(0%);
     transform: scale(1.05);
 }
 
 .marquee-item.touch-active .marquee-image img {
+    filter: grayscale(0%) !important;
     transform: scale(1.05) !important;
 }
 
