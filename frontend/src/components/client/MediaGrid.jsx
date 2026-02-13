@@ -230,13 +230,9 @@ const MediaGrid = ({ files, gallery, accessToken }) => {
                   style={{
                     width: '100%',
                     height: '100%',
-                    objectFit: 'contain',
-                    filter: 'grayscale(100%)',
-                    transition: 'filter 0.7s cubic-bezier(0.16, 1, 0.3, 1)'
+                    objectFit: 'contain'
                   }}
                   onLoad={(e) => onImageLoad(e, file.id)}
-                  onMouseEnter={(e) => e.target.style.filter = 'grayscale(0%)'}
-                  onMouseLeave={(e) => e.target.style.filter = 'grayscale(100%)'}
                 />
               ) : (
                 <div style={{
