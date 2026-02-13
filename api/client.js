@@ -165,7 +165,7 @@ export default async function handler(req) {
 
       const { data: gallery, error: galleryError } = await supabase
         .from('galleries')
-        .select('id, name, client_name, event_date, description')
+        .select('id, name, client_name, event_date, description, client_access_intro_message')
         .eq('id', galleryId)
         .single()
 
@@ -193,6 +193,7 @@ export default async function handler(req) {
             client_name: gallery.client_name,
             event_date: gallery.event_date,
             description: gallery.description,
+            client_access_intro_message: gallery.client_access_intro_message || null,
           },
           files: files || [],
         },

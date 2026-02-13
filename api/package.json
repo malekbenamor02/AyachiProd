@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node server.js",
     "dev:vercel": "vercel dev",
-    "build": "echo 'No build step needed for serverless functions'"
+    "build": "echo 'No build step needed for serverless functions'",
+    "add-admin": "node scripts/add-admin.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.400.0",

@@ -95,7 +95,7 @@ export default async function handler(req, res) {
 
       const { user } = authResult
       const body = await parseBody(req)
-      const { name, client_name, client_email, password, description, event_date } = body
+      const { name, client_name, client_email, password, description, event_date, client_access_intro_message } = body
 
       if (!name || !password) {
         return errorResponse('Name and password are required', 400, 'VALIDATION_ERROR')
@@ -104,6 +104,8 @@ export default async function handler(req, res) {
       const passwordHash = await bcrypt.hash(password, 10)
       const accessSlug = generateAccessSlug()
       const supabase = getSupabaseClient()
+
+      const introMessage = (client_access_intro_message && String(client_access_intro_message).trim()) || null
 
       const { data: gallery, error } = await supabase
         .from('galleries')
@@ -114,6 +116,7 @@ export default async function handler(req, res) {
           password_hash: passwordHash,
           description,
           event_date,
+          client_access_intro_message: introMessage,
           created_by: user.id,
           access_slug: accessSlug,
         })
@@ -365,7 +368,7 @@ export default async function handler(req, res) {
 
       const supabase = getSupabaseClient()
       const body = await parseBody(req)
-      const { name, client_name, client_email, password, description, event_date, client_access_background_url } = body
+      const { name, client_name, client_email, password, description, event_date, client_access_background_url, client_access_intro_message } = body
 
       if (client_access_background_url !== undefined && (client_access_background_url === null || client_access_background_url === '')) {
         const { data: current } = await supabase.from('galleries').select('client_access_background_url').eq('id', galleryId).single()
@@ -382,6 +385,7 @@ export default async function handler(req, res) {
       if (description !== undefined) updateData.description = description
       if (event_date !== undefined) updateData.event_date = event_date
       if (client_access_background_url !== undefined) updateData.client_access_background_url = (client_access_background_url === null || client_access_background_url === '') ? null : client_access_background_url
+      if (client_access_intro_message !== undefined) updateData.client_access_intro_message = (client_access_intro_message && String(client_access_intro_message).trim()) ? String(client_access_intro_message).trim() : null
       if (password) {
         updateData.password_hash = await bcrypt.hash(password, 10)
       }

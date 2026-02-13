@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { galleryService } from '../../services/galleryService'
 import ThemeDatePicker from '../common/ThemeDatePicker'
+import { CLIENT_INTRO_MESSAGE_TEMPLATES, INTRO_MESSAGE_SOURCE } from '../../constants/clientIntroMessageTemplates'
 import '../../styles/index.css'
 
 const GalleryForm = ({ galleryId, onSave, onCancel }) => {
@@ -10,8 +11,12 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
     client_email: '',
     password: '',
     description: '',
-    event_date: ''
+    event_date: '',
+    client_access_intro_message: ''
   })
+  const [introMessageSource, setIntroMessageSource] = useState(INTRO_MESSAGE_SOURCE.NONE)
+  const [introPresetIndex, setIntroPresetIndex] = useState(0)
+  const [introCustomText, setIntroCustomText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -28,14 +33,29 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
   const loadGallery = async () => {
     try {
       const gallery = await galleryService.getGalleryById(galleryId)
+      const intro = (gallery.client_access_intro_message || '').trim()
+      const presetIdx = CLIENT_INTRO_MESSAGE_TEMPLATES.indexOf(intro)
       setFormData({
         name: gallery.name || '',
         client_name: gallery.client_name || '',
         client_email: gallery.client_email || '',
         password: '',
         description: gallery.description || '',
-        event_date: gallery.event_date || ''
+        event_date: gallery.event_date || '',
+        client_access_intro_message: intro
       })
+      if (!intro) {
+        setIntroMessageSource(INTRO_MESSAGE_SOURCE.NONE)
+        setIntroPresetIndex(0)
+        setIntroCustomText('')
+      } else if (presetIdx >= 0) {
+        setIntroMessageSource(INTRO_MESSAGE_SOURCE.PRESET)
+        setIntroPresetIndex(presetIdx)
+        setIntroCustomText('')
+      } else {
+        setIntroMessageSource(INTRO_MESSAGE_SOURCE.CUSTOM)
+        setIntroCustomText(intro)
+      }
       setCurrentBackgroundUrl(gallery.client_access_background_url || '')
       setRemoveBackground(false)
     } catch (err) {
@@ -49,15 +69,22 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
     setLoading(true)
 
     try {
+      const introMessage =
+        introMessageSource === INTRO_MESSAGE_SOURCE.NONE
+          ? ''
+          : introMessageSource === INTRO_MESSAGE_SOURCE.PRESET
+            ? CLIENT_INTRO_MESSAGE_TEMPLATES[introPresetIndex] || ''
+            : introCustomText.trim()
+      const payload = { ...formData, client_access_intro_message: introMessage }
       if (galleryId) {
-        const updatePayload = { ...formData }
+        const updatePayload = { ...payload }
         if (removeBackground) updatePayload.client_access_background_url = null
         await galleryService.updateGallery(galleryId, updatePayload)
         if (backgroundFile) {
           await galleryService.uploadGalleryBackground(galleryId, backgroundFile)
         }
       } else {
-        const created = await galleryService.createGallery(formData)
+        const created = await galleryService.createGallery(payload)
         const id = created?.id
         if (id && backgroundFile) {
           await galleryService.uploadGalleryBackground(id, backgroundFile)
@@ -255,6 +282,82 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
               resize: 'vertical'
             }}
           />
+        </div>
+
+        <div style={{ marginBottom: '32px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 400 }}>
+            Message after password (optional)
+          </label>
+          <p style={{ fontSize: '13px', color: '#737373', marginBottom: '12px' }}>
+            Shown on a white transition page after the client enters their password, before they see the gallery. Uses Caveat font.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="intro_message_source"
+                checked={introMessageSource === INTRO_MESSAGE_SOURCE.NONE}
+                onChange={() => setIntroMessageSource(INTRO_MESSAGE_SOURCE.NONE)}
+              />
+              <span>No message (go straight to gallery)</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="intro_message_source"
+                checked={introMessageSource === INTRO_MESSAGE_SOURCE.PRESET}
+                onChange={() => setIntroMessageSource(INTRO_MESSAGE_SOURCE.PRESET)}
+              />
+              <span>Use a preset message</span>
+            </label>
+            {introMessageSource === INTRO_MESSAGE_SOURCE.PRESET && (
+              <select
+                value={introPresetIndex}
+                onChange={(e) => setIntroPresetIndex(Number(e.target.value))}
+                style={{
+                  marginLeft: '24px',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(0,0,0,0.1)',
+                  fontSize: '14px',
+                  maxWidth: '400px'
+                }}
+              >
+                {CLIENT_INTRO_MESSAGE_TEMPLATES.map((msg, i) => (
+                  <option key={i} value={i}>{msg}</option>
+                ))}
+              </select>
+            )}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="intro_message_source"
+                checked={introMessageSource === INTRO_MESSAGE_SOURCE.CUSTOM}
+                onChange={() => setIntroMessageSource(INTRO_MESSAGE_SOURCE.CUSTOM)}
+              />
+              <span>Write a custom message</span>
+            </label>
+            {introMessageSource === INTRO_MESSAGE_SOURCE.CUSTOM && (
+              <textarea
+                value={introCustomText}
+                onChange={(e) => setIntroCustomText(e.target.value)}
+                placeholder="Your custom message..."
+                maxLength={500}
+                rows={3}
+                style={{
+                  marginLeft: '24px',
+                  width: '100%',
+                  maxWidth: '400px',
+                  padding: '12px',
+                  border: '1px solid rgba(0,0,0,0.1)',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  fontFamily: 'Inter, sans-serif',
+                  resize: 'vertical'
+                }}
+              />
+            )}
+          </div>
         </div>
 
         <div className="gallery-form-field" style={{ marginBottom: '32px' }}>
