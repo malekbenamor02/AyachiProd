@@ -15,4 +15,20 @@ export const settingsService = {
     const response = await api.patch(BASE, body)
     return response.data.data
   },
+
+  async getClientAccessSettings() {
+    const response = await api.get('/api/settings/client-access')
+    const data = response?.data?.data ?? response?.data
+    return { background_url: data?.background_url ?? '' }
+  },
+
+  async uploadClientAccessBackground(file) {
+    const formData = new FormData()
+    formData.append('image', file)
+    const response = await api.post('/api/settings/client-access-background', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    const data = response?.data?.data ?? response?.data
+    return data?.background_url ?? ''
+  },
 }

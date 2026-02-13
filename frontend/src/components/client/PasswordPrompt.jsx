@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import api from '../../services/api'
 import '../../styles/index.css'
 
-const PasswordPrompt = ({ token, onSuccess }) => {
+const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,32 +25,69 @@ const PasswordPrompt = ({ token, onSuccess }) => {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
+    <div className="client-access-page" style={{
+      minHeight: '100dvh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      padding: '24px',
+      position: 'relative',
       backgroundColor: '#FFFFFF',
-      padding: '24px'
+      overflow: 'hidden'
     }}>
-      <div style={{
-        maxWidth: '400px',
-        width: '100%',
-        padding: '48px',
-        border: '1px solid rgba(0, 0, 0, 0.1)',
-        borderRadius: '8px'
-      }}>
+      {backgroundUrl && (
+        <>
+          <div
+            className="client-access-page__bg"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: `url(${backgroundUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+            aria-hidden="true"
+          />
+          <div
+            className="client-access-page__overlay"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundColor: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)'
+            }}
+            aria-hidden="true"
+          />
+        </>
+      )}
+      <div
+        className="client-access-page__card"
+        style={{
+          maxWidth: '400px',
+          width: '100%',
+          padding: 'clamp(24px, 6vw, 48px)',
+          border: '1px solid rgba(0, 0, 0, 0.1)',
+          borderRadius: '8px',
+          backgroundColor: '#FFFFFF',
+          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.08)',
+          position: 'relative',
+          zIndex: 1
+        }}
+      >
         <h1 style={{
-          fontSize: '32px',
+          fontSize: 'clamp(24px, 5vw, 32px)',
           fontWeight: 700,
           letterSpacing: '-0.05em',
           marginBottom: '16px',
-          textAlign: 'center'
+          textAlign: 'center',
+          color: '#000000'
         }}>
           Gallery Access
         </h1>
         <p style={{
-          fontSize: '16px',
+          fontSize: 'clamp(14px, 3vw, 16px)',
           color: '#525252',
           marginBottom: '32px',
           textAlign: 'center'
@@ -78,7 +115,8 @@ const PasswordPrompt = ({ token, onSuccess }) => {
               display: 'block',
               marginBottom: '8px',
               fontSize: '14px',
-              fontWeight: 400
+              fontWeight: 400,
+              color: '#000000'
             }}>
               Password
             </label>
@@ -94,7 +132,8 @@ const PasswordPrompt = ({ token, onSuccess }) => {
                 border: '1px solid rgba(0, 0, 0, 0.1)',
                 borderRadius: '4px',
                 fontSize: '16px',
-                fontFamily: 'Inter, sans-serif'
+                fontFamily: 'Inter, sans-serif',
+                boxSizing: 'border-box'
               }}
             />
           </div>

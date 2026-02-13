@@ -58,6 +58,23 @@ body {
     box-shadow: 0 0 0 1px #fff;
 }
 
+/* Client access page: responsive full-bleed background + overlay */
+.client-access-page {
+    box-sizing: border-box;
+}
+.client-access-page__bg {
+    -webkit-background-size: cover;
+    background-size: cover;
+}
+@media (max-width: 480px) {
+    .client-access-page {
+        padding: 16px;
+    }
+    .client-access-page__card {
+        padding: 24px 20px;
+    }
+}
+
 /* Navigation Header — fixed at top, does not scroll */
 .header {
     position: fixed;

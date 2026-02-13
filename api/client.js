@@ -13,6 +13,23 @@ export default async function handler(req) {
   const url = new URL(req.url)
   const path = url.pathname.replace('/api/client', '')
 
+  // GET /api/client/settings - Public settings for client gallery access page (e.g. background image)
+  if (path === '/settings' && req.method === 'GET') {
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'client_access_background_url')
+        .single()
+      const backgroundUrl = (data?.value && String(data.value).trim()) || ''
+      return successResponse({ client_access_background_url: backgroundUrl }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Client settings GET error:', err)
+      return successResponse({ client_access_background_url: '' }, 200, corsHeaders())
+    }
+  }
+
   // POST /api/client/authenticate - Client login (only the single permanent link/slug works)
   if (path === '/authenticate' && req.method === 'POST') {
     try {

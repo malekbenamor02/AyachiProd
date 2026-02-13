@@ -304,6 +304,25 @@ app.patch('/api/settings/maintenance', async (req, res) => {
     res.status(500).json({ error: error.message, success: false })
   }
 })
+app.get('/api/settings/client-access', async (req, res) => {
+  try {
+    const vercelReq = createVercelRequest(req)
+    const response = await settingsHandler(vercelReq)
+    sendVercelResponse(res, response)
+  } catch (error) {
+    console.error('Settings error:', error)
+    res.status(500).json({ error: error.message, success: false })
+  }
+})
+app.post('/api/settings/client-access-background', async (req, res) => {
+  try {
+    const response = await settingsHandler(req)
+    sendVercelResponse(res, response)
+  } catch (error) {
+    console.error('Settings error:', error)
+    res.status(500).json({ error: error.message, success: false })
+  }
+})
 
 // Health check
 app.get('/health', (req, res) => {

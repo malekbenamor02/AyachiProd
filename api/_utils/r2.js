@@ -104,6 +104,15 @@ export function generateFilePath(galleryId, originalFileName) {
 }
 
 /**
+ * Generate file path for client access background (admin-uploaded)
+ */
+export function generateClientAccessBackgroundPath(originalFileName) {
+  const timestamp = Date.now()
+  const sanitized = (originalFileName || 'image.jpg').replace(/[^a-zA-Z0-9.-]/g, '_')
+  return `client-access/${timestamp}-${sanitized}`
+}
+
+/**
  * Generate file path for showcase/marquee images
  */
 export function generateShowcaseFilePath(originalFileName) {

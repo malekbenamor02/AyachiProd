@@ -13,8 +13,16 @@ const ClientGallery = () => {
   const [accessToken, setAccessToken] = useState(null)
   const [galleryData, setGalleryData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [backgroundUrl, setBackgroundUrl] = useState('')
 
   const authenticated = !!accessToken && !!galleryData
+
+  useEffect(() => {
+    api.get('/api/client/settings').then((res) => {
+      const url = res?.data?.data?.client_access_background_url || res?.data?.client_access_background_url || ''
+      setBackgroundUrl(url || '')
+    }).catch(() => setBackgroundUrl(''))
+  }, [])
 
   useEffect(() => {
     if (!accessToken) return
@@ -62,7 +70,7 @@ const ClientGallery = () => {
           <meta name="robots" content="noindex, nofollow" />
         </Helmet>
         <Cursor />
-        <PasswordPrompt token={token} onSuccess={handleAuthSuccess} />
+        <PasswordPrompt token={token} onSuccess={handleAuthSuccess} backgroundUrl={backgroundUrl} />
       </div>
     )
   }
