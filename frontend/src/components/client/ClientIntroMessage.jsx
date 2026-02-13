@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import '../../styles/index.css'
 
-const INTRO_DURATION_MS = 1200
-const SHOW_DURATION_MS = 4000
-const OUTRO_DURATION_MS = 800
+const INTRO_DURATION_MS = 2400
+const SHOW_DURATION_MS = 6500
+const OUTRO_DURATION_MS = 1000
 
 const ClientIntroMessage = ({ message, onComplete }) => {
   const [phase, setPhase] = useState('intro') // 'intro' | 'visible' | 'outro' | 'done'

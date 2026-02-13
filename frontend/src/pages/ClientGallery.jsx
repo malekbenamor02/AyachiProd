@@ -9,19 +9,17 @@ import Footer from '../components/Portfolio/Footer'
 import Cursor from '../components/common/Cursor'
 import api from '../services/api'
 
-const INTRO_SEEN_KEY = 'client_gallery_intro_seen'
-
 const ClientGallery = () => {
   const { token } = useParams()
   const [accessToken, setAccessToken] = useState(null)
   const [galleryData, setGalleryData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [backgroundUrl, setBackgroundUrl] = useState('')
-  const [introMessageSeen, setIntroMessageSeen] = useState(false)
+  const [introComplete, setIntroComplete] = useState(false)
 
   const authenticated = !!accessToken && !!galleryData
   const introMessage = (galleryData?.gallery?.client_access_intro_message || '').trim()
-  const showIntro = authenticated && introMessage.length > 0 && !introMessageSeen
+  const showIntro = authenticated && introMessage.length > 0 && !introComplete
 
   useEffect(() => {
     if (!token) return
@@ -61,20 +59,9 @@ const ClientGallery = () => {
     setAccessToken(data.access_token)
   }
 
-  const markIntroSeen = useCallback(() => {
-    setIntroMessageSeen(true)
-    try {
-      const id = galleryData?.gallery?.id
-      if (id) sessionStorage.setItem(INTRO_SEEN_KEY, id)
-    } catch (_) {}
-  }, [galleryData?.gallery?.id])
-
-  useEffect(() => {
-    try {
-      const seenId = sessionStorage.getItem(INTRO_SEEN_KEY)
-      if (seenId && galleryData?.gallery?.id === seenId) setIntroMessageSeen(true)
-    } catch (_) {}
-  }, [galleryData?.gallery?.id])
+  const markIntroComplete = useCallback(() => {
+    setIntroComplete(true)
+  }, [])
 
   if (loading) {
     return (
@@ -105,7 +92,7 @@ const ClientGallery = () => {
           <meta name="robots" content="noindex, nofollow" />
         </Helmet>
         <Cursor />
-        <ClientIntroMessage message={introMessage} onComplete={markIntroSeen} />
+        <ClientIntroMessage message={introMessage} onComplete={markIntroComplete} />
       </>
     )
   }
