@@ -249,7 +249,57 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST /api/galleries/[id]/background - Upload client access background image (admin)
+  // POST /api/galleries/[id]/background-url - Get presigned PUT URL for large background image (admin)
+  if (pathParts.length === 2 && pathParts[1] === 'background-url' && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const supabase = getSupabaseClient()
+      const { data: gallery } = await supabase.from('galleries').select('id').eq('id', galleryId).single()
+      if (!gallery) return errorResponse('Gallery not found', 404, 'NOT_FOUND')
+      const body = await parseBody(req)
+      const filename = (body?.filename && String(body.filename).trim()) || body?.originalFilename || 'image.jpg'
+      const contentType = (body?.content_type && String(body.content_type).trim()) || body?.contentType || 'image/jpeg'
+      const filePath = generateGalleryBackgroundPath(galleryId, filename)
+      const putUrl = await getPresignedPutUrl(filePath, contentType, 900)
+      return successResponse({ putUrl, filePath }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Gallery background-url error:', err)
+      return errorResponse(err.message || 'Failed to get upload URL', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/galleries/[id]/background-complete - Register background after client PUT to R2 (admin)
+  if (pathParts.length === 2 && pathParts[1] === 'background-complete' && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const filePath = (body?.filePath && String(body.filePath).trim()) || body?.file_path
+      if (!filePath) return errorResponse('Missing filePath', 400, 'VALIDATION_ERROR')
+      const CDN_URL = (process.env.R2_CDN_URL || '').replace(/\/$/, '')
+      const fileUrl = CDN_URL ? `${CDN_URL}/${filePath}` : filePath
+      const supabase = getSupabaseClient()
+      const { data: gallery } = await supabase.from('galleries').select('client_access_background_url').eq('id', galleryId).single()
+      if (!gallery) return errorResponse('Gallery not found', 404, 'NOT_FOUND')
+      if (gallery.client_access_background_url) {
+        const oldKey = (gallery.client_access_background_url || '').replace(/^https?:\/\/[^/]+/, '').replace(/^\//, '')
+        if (oldKey) deleteFileFromR2(oldKey).catch((e) => console.error('R2 delete old background:', e))
+      }
+      const { error: updateError } = await supabase.from('galleries').update({ client_access_background_url: fileUrl }).eq('id', galleryId)
+      if (updateError) return errorResponse('Failed to save background', 500, 'DATABASE_ERROR')
+      return successResponse({ client_access_background_url: fileUrl }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Gallery background-complete error:', err)
+      return errorResponse(err.message || 'Failed to complete upload', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/galleries/[id]/background - Upload client access background image (admin, multipart - small files only)
   if (pathParts.length === 2 && pathParts[1] === 'background' && req.method === 'POST') {
     try {
       const authResult = requireAdmin(req)

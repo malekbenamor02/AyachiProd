@@ -68,9 +68,9 @@ const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
           maxWidth: '400px',
           width: '100%',
           padding: 'clamp(24px, 6vw, 48px)',
-          border: '1px solid rgba(0, 0, 0, 0.1)',
+          border: '1px solid rgba(0, 0, 0, 0.15)',
           borderRadius: '8px',
-          backgroundColor: '#FFFFFF',
+          backgroundColor: backgroundUrl ? 'rgba(255, 255, 255, 0.65)' : '#FFFFFF',
           boxShadow: '0 4px 24px rgba(0, 0, 0, 0.08)',
           position: 'relative',
           zIndex: 1

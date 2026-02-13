@@ -74,6 +74,29 @@ export const galleryService = {
   },
 
   async uploadGalleryBackground(galleryId, file) {
+    const usePresigned = file.size > LARGE_FILE_THRESHOLD
+    if (usePresigned) {
+      const { data: initData } = await api.post(`/api/galleries/${galleryId}/background-url`, {
+        filename: file.name,
+        content_type: file.type || 'image/jpeg',
+      })
+      const payload = initData?.data ?? initData
+      const putUrl = payload?.putUrl
+      const filePath = payload?.filePath
+      if (!putUrl || !filePath) throw new Error('Invalid upload URL response')
+      const putRes = await fetch(putUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'image/jpeg' },
+      })
+      if (!putRes.ok) {
+        const text = await putRes.text()
+        throw new Error(text || `Upload failed: ${putRes.status}`)
+      }
+      const { data: completeData } = await api.post(`/api/galleries/${galleryId}/background-complete`, { filePath })
+      const out = completeData?.data ?? completeData
+      return out?.client_access_background_url ?? ''
+    }
     const formData = new FormData()
     formData.append('image', file)
     const res = await api.post(`/api/galleries/${galleryId}/background`, formData, {

@@ -9,14 +9,13 @@ import SectionsEditor from './SectionsEditor'
 import BookingsList from './BookingsList'
 import SessionsCalendar from './SessionsCalendar'
 import MaintenanceEditor from './MaintenanceEditor'
-import ClientAccessEditor from './ClientAccessEditor'
 import '../../styles/index.css'
 
 const Dashboard = () => {
   const { user, logout } = useAuth()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState('list') // 'list', 'detail', 'create', 'edit', 'showcase', 'sections', 'bookings', 'calendar', 'maintenance', 'client-access'
+  const [view, setView] = useState('list') // 'list', 'detail', 'create', 'edit', 'showcase', 'sections', 'bookings', 'calendar', 'maintenance'
   const [selectedGalleryId, setSelectedGalleryId] = useState(null)
 
   useEffect(() => {
@@ -128,14 +127,6 @@ const Dashboard = () => {
         >
           Maintenance mode
         </button>
-        <button
-          type="button"
-          onClick={() => setView('client-access')}
-          className="admin-dashboard-logout-button"
-          style={{ background: 'transparent', color: '#000', border: '1px solid #000' }}
-        >
-          Client access background
-        </button>
       </div>
 
       {/* Main Content */}
@@ -149,8 +140,6 @@ const Dashboard = () => {
         <SessionsCalendar onBack={() => setView('list')} />
       ) : view === 'maintenance' ? (
         <MaintenanceEditor onBack={() => setView('list')} />
-      ) : view === 'client-access' ? (
-        <ClientAccessEditor onBack={() => setView('list')} />
       ) : view === 'create' ? (
         <GalleryForm
           onSave={handleSave}
