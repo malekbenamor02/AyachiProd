@@ -44,10 +44,7 @@ const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
             backgroundImage: `url(${backgroundUrl})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            filter: 'blur(4px)',
-            WebkitFilter: 'blur(4px)',
-            transform: 'scale(1.02)'
+            backgroundRepeat: 'no-repeat'
           }}
           aria-hidden="true"
         />
@@ -66,66 +63,36 @@ const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
           zIndex: 1
         }}
       >
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="client-access-form">
           {error && (
-            <div style={{
-              padding: '12px',
-              marginBottom: '24px',
-              backgroundColor: '#fee',
-              border: '1px solid #fcc',
-              borderRadius: '4px',
-              color: '#c00',
-              fontSize: '14px'
-            }}>
+            <div className="client-access-error">
               {error}
             </div>
           )}
 
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              fontWeight: 400,
-              color: '#000000'
-            }}>
+          <div className="client-access-field">
+            <label className="client-access-label" htmlFor="client-access-password">
               Password
             </label>
             <input
+              id="client-access-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               autoFocus
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid rgba(0, 0, 0, 0.1)',
-                borderRadius: '4px',
-                fontSize: '16px',
-                fontFamily: 'Inter, sans-serif',
-                boxSizing: 'border-box'
-              }}
+              placeholder="Enter your password"
+              className="client-access-input"
+              autoComplete="current-password"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: '100%',
-              padding: '14px',
-              backgroundColor: '#000000',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '16px',
-              fontWeight: 400,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1
-            }}
+            className="client-access-btn"
           >
-            {loading ? 'Verifying...' : 'Access Gallery'}
+            {loading ? 'Verifying…' : 'Access Gallery'}
           </button>
         </form>
       </div>
