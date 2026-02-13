@@ -63,30 +63,30 @@ export const sectionsService = {
 
   /**
    * Upload multiple work images one-by-one with progress (0-100).
-   * Retries each file up to 3 times, 2 min timeout per request.
-   * Returns { successCount, failedCount, lastError } so caller can show partial success.
+   * New FormData per attempt (body is consumed after send). Retries 4x, 2 min timeout.
    */
   async uploadWorkImagesWithProgress(sectionId, files, altText = '', onProgress) {
     const list = Array.isArray(files) ? files : [files]
     if (list.length === 0) return { successCount: 0, failedCount: 0, lastError: null }
     const total = list.length
     const UPLOAD_TIMEOUT_MS = 2 * 60 * 1000
-    const MAX_RETRIES = 3
-    const RETRY_DELAY_MS = 1000
+    const MAX_RETRIES = 4
+    const RETRY_DELAY_MS = 1500
+    const DELAY_BETWEEN_FILES_MS = 200
     let successCount = 0
     let lastError = null
 
     for (let i = 0; i < list.length; i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, DELAY_BETWEEN_FILES_MS))
       onProgress?.(Math.round((i / total) * 100))
-      const formData = new FormData()
-      formData.append('image', list[i])
-      if (altText) formData.append('alt_text', altText)
 
+      const file = list[i]
       let done = false
       for (let attempt = 0; attempt < MAX_RETRIES && !done; attempt++) {
-        if (attempt > 0) {
-          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
-        }
+        if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+        const formData = new FormData()
+        formData.append('image', file)
+        if (altText) formData.append('alt_text', altText)
         try {
           await api.post(`/api/sections/${sectionId}/work-images/upload`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
@@ -107,10 +107,7 @@ export const sectionsService = {
             (err.message && String(err.message)) ||
             'Upload failed'
           lastError = msg
-          if (attempt === MAX_RETRIES - 1) {
-            // last attempt failed, continue to next file
-            break
-          }
+          if (attempt === MAX_RETRIES - 1) break
         }
       }
       onProgress?.(Math.round(((i + 1) / total) * 100))
