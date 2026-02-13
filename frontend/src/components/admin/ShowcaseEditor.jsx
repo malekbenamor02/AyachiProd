@@ -11,6 +11,7 @@ const ShowcaseEditor = ({ onBack, onStatsRefresh }) => {
   const [confirmRemoveId, setConfirmRemoveId] = useState(null)
   const [altText, setAltText] = useState('')
   const [error, setError] = useState('')
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 })
 
   const load = async () => {
     setLoading(true)
@@ -19,7 +20,7 @@ const ShowcaseEditor = ({ onBack, onStatsRefresh }) => {
       const data = await showcaseService.getImages()
       setImages(Array.isArray(data) ? data : [])
     } catch (e) {
-      setError(e.message || 'Failed to load images')
+      setError(e?.message || 'Failed to load images')
       setImages([])
     } finally {
       setLoading(false)
@@ -31,23 +32,36 @@ const ShowcaseEditor = ({ onBack, onStatsRefresh }) => {
   }, [])
 
   const handleFile = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file || !file.type.startsWith('image/')) {
-      setError('Please select an image file (JPEG, PNG, etc.)')
+    const fileList = e.target.files
+    if (!fileList?.length) return
+    const files = Array.from(fileList).filter((f) => f && f.type?.startsWith('image/'))
+    if (files.length === 0) {
+      setError('Please select image file(s) (JPEG, PNG, etc.)')
       return
+    }
+    if (files.length !== fileList.length) {
+      setError('Some files were skipped (not images).')
     }
     setUploading(true)
     setError('')
+    setUploadProgress({ current: 0, total: files.length })
+    const input = e.target
     try {
-      await showcaseService.uploadImage(file, altText)
+      for (let i = 0; i < files.length; i++) {
+        setUploadProgress({ current: i + 1, total: files.length })
+        await showcaseService.uploadImage(files[i], altText)
+      }
       setAltText('')
-      e.target.value = ''
+      if (input) input.value = ''
       await load()
-      onStatsRefresh?.()
+      if (typeof onStatsRefresh === 'function') onStatsRefresh()
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Upload failed')
+      const msg = err?.response?.data?.error || err?.message || 'Upload failed'
+      setError(msg)
+      await load()
     } finally {
       setUploading(false)
+      setUploadProgress({ current: 0, total: 0 })
     }
   }
 
@@ -96,22 +110,29 @@ const ShowcaseEditor = ({ onBack, onStatsRefresh }) => {
 
       <div className="showcase-editor-upload">
         <label className="showcase-editor-upload-label">
-          <span>Add image</span>
+          <span>Add image(s)</span>
           <input
             type="file"
             accept="image/*"
+            multiple
             disabled={uploading}
             onChange={handleFile}
           />
         </label>
         <input
           type="text"
-          placeholder="Alt text (optional)"
+          placeholder="Alt text (optional, for all)"
           value={altText}
           onChange={(e) => setAltText(e.target.value)}
           className="showcase-editor-alt"
         />
-        {uploading && <span className="showcase-editor-uploading">Uploading…</span>}
+        {uploading && (
+          <span className="showcase-editor-uploading">
+            {uploadProgress.total > 1
+              ? `Uploading ${uploadProgress.current}/${uploadProgress.total}…`
+              : 'Uploading…'}
+          </span>
+        )}
       </div>
 
       {loading ? (
