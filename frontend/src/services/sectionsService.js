@@ -21,6 +21,7 @@ export const sectionsService = {
     if (alt_text) formData.append('alt_text', alt_text)
     const { data } = await api.post('/api/sections/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000, // 2 min for large images
     })
     return data?.data
   },
