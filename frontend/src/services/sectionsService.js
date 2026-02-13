@@ -110,46 +110,56 @@ export const sectionsService = {
               },
             })
           } else {
-            const { data: initData } = await api.post(`/api/sections/${sectionId}/work-images/upload-init`, {
+            const initRes = await api.post(`/api/sections/${sectionId}/work-images/upload-init`, {
               filename: file.name || 'file',
               content_type: contentType,
             })
-            const { uploadId, filePath } = initData || {}
+            const initPayload = initRes?.data?.data ?? initRes?.data
+            const uploadId = initPayload?.uploadId
+            const filePath = initPayload?.filePath
             if (!uploadId || !filePath) throw new Error('Invalid upload-init response')
             const partCount = Math.ceil(file.size / CHUNK_SIZE)
             const parts = []
-            for (let p = 1; p <= partCount; p++) {
-              const start = (p - 1) * CHUNK_SIZE
-              const end = Math.min(p * CHUNK_SIZE, file.size)
-              const chunk = file.slice(start, end)
-              const partRes = await api.post(`/api/sections/${sectionId}/work-images/upload-part`, chunk, {
-                headers: {
-                  'Content-Type': 'application/octet-stream',
-                  'X-Upload-Id': uploadId,
-                  'X-File-Path': filePath,
-                  'X-Part-Number': String(p),
-                },
-                timeout: 2 * 60 * 1000,
-                onUploadProgress: (ev) => {
-                  if (ev.total && ev.total > 0 && partCount > 0) {
-                    const partPct = ev.loaded / ev.total
-                    const overall = ((i + (p - 1 + partPct) / partCount) / total) * 100
-                    onProgress?.(Math.round(Math.min(99, overall)))
-                  }
-                },
+            try {
+              for (let p = 1; p <= partCount; p++) {
+                if (p > 1) await new Promise((r) => setTimeout(r, 150))
+                const start = (p - 1) * CHUNK_SIZE
+                const end = Math.min(p * CHUNK_SIZE, file.size)
+                const chunk = file.slice(start, end)
+                const partRes = await api.post(`/api/sections/${sectionId}/work-images/upload-part`, chunk, {
+                  headers: {
+                    'Content-Type': 'application/octet-stream',
+                    'X-Upload-Id': uploadId,
+                    'X-File-Path': filePath,
+                    'X-Part-Number': String(p),
+                  },
+                  timeout: 3 * 60 * 1000,
+                  onUploadProgress: (ev) => {
+                    if (ev.total && ev.total > 0 && partCount > 0) {
+                      const partPct = ev.loaded / ev.total
+                      const overall = ((i + (p - 1 + partPct) / partCount) / total) * 100
+                      onProgress?.(Math.round(Math.min(99, overall)))
+                    }
+                  },
+                })
+                const partPayload = partRes?.data?.data ?? partRes?.data
+                const etag = partPayload?.etag
+                if (!etag) throw new Error('Missing etag from part upload')
+                parts.push({ partNumber: p, etag })
+              }
+              await api.post(`/api/sections/${sectionId}/work-images/upload-complete`, {
+                uploadId,
+                filePath,
+                parts,
+                file_type: fileTypeFromMime(contentType),
+                alt_text: altText || '',
               })
-              const etag = partRes?.data?.data?.etag || partRes?.data?.etag
-              if (!etag) throw new Error('Missing etag from part upload')
-              parts.push({ partNumber: p, etag })
+            } catch (chunkErr) {
+              try {
+                await api.post(`/api/sections/${sectionId}/work-images/upload-abort`, { uploadId, filePath })
+              } catch (_) {}
+              throw chunkErr
             }
-            await api.post(`/api/sections/${sectionId}/work-images/upload-complete`, {
-              uploadId,
-              filePath,
-              sectionId,
-              parts,
-              file_type: fileTypeFromMime(contentType),
-              alt_text: altText || '',
-            })
           }
           successCount += 1
           done = true

@@ -411,6 +411,27 @@ export default async function handler(req, res) {
     }
   }
 
+  // POST /api/sections/:sectionId/work-images/upload-abort - Abort chunked upload (clean up orphaned multipart)
+  if (pathParts.length === 3 && pathParts[2] === 'upload-abort' && isWorkImages && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const uploadId = body?.uploadId && String(body.uploadId).trim()
+      const filePath = body?.filePath && String(body.filePath).trim()
+      if (!uploadId || !filePath) {
+        return errorResponse('Missing uploadId or filePath', 400, 'VALIDATION_ERROR')
+      }
+      await abortMultipartUpload(uploadId, filePath)
+      return successResponse({ ok: true }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Work images upload-abort error:', err)
+      return errorResponse(err.message || 'Failed to abort', 500, 'INTERNAL_ERROR')
+    }
+  }
+
   // POST /api/sections/:sectionId/work-images/upload-complete - Finish chunked upload, insert DB row
   if (pathParts.length === 3 && pathParts[2] === 'upload-complete' && isWorkImages && req.method === 'POST') {
     try {
