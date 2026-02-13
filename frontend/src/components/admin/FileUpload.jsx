@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
-import api from '../../services/api'
+import { galleryService } from '../../services/galleryService'
 import '../../styles/index.css'
 
 const FileUpload = ({ galleryId, onUploadComplete }) => {
   const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState(0)
+  const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
@@ -20,43 +20,44 @@ const FileUpload = ({ galleryId, onUploadComplete }) => {
       setError('Please select a gallery first')
       return
     }
+    const files = Array.from(acceptedFiles || []).filter((f) => f && (f.size !== undefined))
+    if (files.length === 0) return
 
     setUploading(true)
     setError('')
     setSuccess(false)
-    setProgress(0)
+    setProgress({ current: 0, total: files.length })
 
     try {
-      for (let i = 0; i < acceptedFiles.length; i++) {
-        const file = acceptedFiles[i]
-        const formData = new FormData()
-        formData.append('file', file)
-
-        await api.post(`/api/galleries/${galleryId}/upload`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              ((i + progressEvent.loaded / (progressEvent.total || 1)) / acceptedFiles.length) * 100
-            )
-            setProgress(percentCompleted)
-          },
+      for (let i = 0; i < files.length; i++) {
+        setProgress((p) => ({ ...p, current: i + 1 }))
+        await galleryService.uploadFile(galleryId, files[i], (loaded, total) => {
+          const part = total ? loaded / total : 0
+          setProgress((p) => ({ ...p, percent: Math.round(((i + part) / files.length) * 100) }))
         })
       }
-
-      setProgress(100)
-      if (onUploadComplete) {
-        onUploadComplete()
+      setProgress((p) => ({ ...p, percent: 100 }))
+      try {
+        if (typeof onUploadComplete === 'function') onUploadComplete()
+      } catch (cbErr) {
+        console.error('onUploadComplete error:', cbErr)
       }
       setSuccess(true)
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.data?.error || 'Failed to upload files')
+      const msg = err?.response?.data?.error || err?.response?.data?.data?.error || err?.message || 'Failed to upload files'
+      setError(msg)
+      try {
+        if (typeof onUploadComplete === 'function') onUploadComplete()
+      } catch (cbErr) {
+        console.error('onUploadComplete error:', cbErr)
+      }
     } finally {
       setUploading(false)
-      setProgress(0)
+      setProgress({ current: 0, total: 0 })
     }
   }, [galleryId, onUploadComplete])
+
+  const progressPercent = progress.total > 0 ? (progress.percent != null ? progress.percent : Math.round((progress.current / progress.total) * 100)) : 0
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -125,7 +126,9 @@ const FileUpload = ({ galleryId, onUploadComplete }) => {
         <input {...getInputProps()} disabled={uploading} />
         {uploading ? (
           <div>
-            <p style={{ fontSize: '16px', marginBottom: '16px' }}>Uploading...</p>
+            <p style={{ fontSize: '16px', marginBottom: '16px' }}>
+              {progress.total > 1 ? `Uploading ${progress.current}/${progress.total}…` : 'Uploading…'}
+            </p>
             <div style={{
               width: '100%',
               height: '8px',
@@ -135,13 +138,13 @@ const FileUpload = ({ galleryId, onUploadComplete }) => {
               marginBottom: '8px'
             }}>
               <div style={{
-                width: `${progress}%`,
+                width: `${progressPercent}%`,
                 height: '100%',
                 backgroundColor: '#000000',
                 transition: 'width 0.3s'
               }} />
             </div>
-            <p style={{ fontSize: '14px', color: '#525252' }}>{progress}%</p>
+            <p style={{ fontSize: '14px', color: '#525252' }}>{progressPercent}%</p>
           </div>
         ) : (
           <div>

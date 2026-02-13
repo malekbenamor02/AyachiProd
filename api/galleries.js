@@ -1,7 +1,7 @@
 import { requireAdmin } from './_middleware/auth.js'
 import { getSupabaseClient } from './_utils/supabase.js'
 import { generateQRCodeForSlug, generateAccessSlug } from './_utils/qr.js'
-import { uploadFileToR2, generateFilePath } from './_utils/r2.js'
+import { uploadFileToR2, generateFilePath, getPresignedPutUrl } from './_utils/r2.js'
 import bcrypt from 'bcryptjs'
 import { successResponse, errorResponse, corsHeaders, parseBody } from './_utils/helpers.js'
 import { handleCORS } from './_middleware/auth.js'
@@ -337,6 +337,78 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error('QR code error:', error)
       return errorResponse('Internal server error', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/galleries/[id]/upload-url - Get presigned PUT URL (large files, avoid 413)
+  if (pathParts.length === 2 && pathParts[1] === 'upload-url' && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const supabase = getSupabaseClient()
+      const { data: gallery } = await supabase.from('galleries').select('id').eq('id', galleryId).single()
+      if (!gallery) return errorResponse('Gallery not found', 404, 'NOT_FOUND')
+      const body = await parseBody(req)
+      const filename = (body?.filename && String(body.filename).trim()) || body?.originalFilename || 'file'
+      const contentType = (body?.content_type && String(body.content_type).trim()) || body?.contentType || 'application/octet-stream'
+      const filePath = generateFilePath(galleryId, filename)
+      const putUrl = await getPresignedPutUrl(filePath, contentType, 900)
+      return successResponse({ putUrl, filePath }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Gallery upload-url error:', err)
+      return errorResponse(err.message || 'Failed to get upload URL', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/galleries/[id]/upload-complete - Register file after client PUT to R2
+  if (pathParts.length === 2 && pathParts[1] === 'upload-complete' && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const userId = authResult.user.id
+      const supabase = getSupabaseClient()
+      const { data: gallery } = await supabase.from('galleries').select('id').eq('id', galleryId).single()
+      if (!gallery) return errorResponse('Gallery not found', 404, 'NOT_FOUND')
+      const body = await parseBody(req)
+      const filePath = (body?.filePath && String(body.filePath).trim()) || body?.file_path
+      if (!filePath) return errorResponse('Missing filePath', 400, 'VALIDATION_ERROR')
+      const CDN_URL = (process.env.R2_CDN_URL || '').replace(/\/$/, '')
+      const fileUrl = CDN_URL ? `${CDN_URL}/${filePath}` : filePath
+      const originalName = (body?.original_name && String(body.original_name).trim()) || filePath.split('/').pop() || 'file'
+      const mime = (body?.mime_type && String(body.mime_type).trim()) || body?.content_type || 'application/octet-stream'
+      const fileType = mime.startsWith('image/') ? 'image' : mime.startsWith('video/') ? 'video' : 'image'
+      const fileSize = typeof body?.file_size === 'number' ? body.file_size : parseInt(body?.file_size, 10) || 0
+      const { count } = await supabase.from('media_files').select('*', { count: 'exact', head: true }).eq('gallery_id', galleryId)
+      const displayOrder = count ?? 0
+      const { data: row, error } = await supabase
+        .from('media_files')
+        .insert({
+          gallery_id: galleryId,
+          file_name: filePath.split('/').pop(),
+          original_name: originalName,
+          file_path: filePath,
+          file_url: fileUrl,
+          file_type: fileType,
+          mime_type: mime,
+          file_size: fileSize,
+          upload_status: 'completed',
+          uploaded_by: userId,
+          display_order: displayOrder,
+        })
+        .select('id, file_url, original_name, file_type')
+        .single()
+      if (error) {
+        console.error('Gallery upload-complete insert error:', error.message)
+        return errorResponse('Failed to save file record', 500, 'DATABASE_ERROR')
+      }
+      return successResponse({ message: 'File uploaded', file: row }, 201, corsHeaders())
+    } catch (err) {
+      console.error('Gallery upload-complete error:', err)
+      return errorResponse(err.message || 'Failed to complete upload', 500, 'INTERNAL_ERROR')
     }
   }
 

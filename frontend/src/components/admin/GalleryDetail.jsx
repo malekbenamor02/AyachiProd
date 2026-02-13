@@ -24,10 +24,11 @@ const GalleryDetail = ({ galleryId, onBack, onStatsRefresh }) => {
         galleryService.getGalleryById(galleryId),
         galleryService.getGalleryFiles(galleryId),
       ])
-      setGallery(galleryData)
+      setGallery(galleryData ?? null)
       setFiles(Array.isArray(filesData) ? filesData : [])
     } catch (error) {
       console.error('Failed to load gallery:', error)
+      setFiles([])
     } finally {
       setLoading(false)
     }
