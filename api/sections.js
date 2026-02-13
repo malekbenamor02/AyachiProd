@@ -386,6 +386,10 @@ export default async function handler(req, res) {
       if (!filePath) {
         return errorResponse('Missing filePath', 400, 'VALIDATION_ERROR')
       }
+      const CDN_URL = process.env.R2_CDN_URL || ''
+      if (!CDN_URL) {
+        return errorResponse('R2_CDN_URL is not set; image URLs cannot be built', 500, 'CONFIG_ERROR')
+      }
       function mimeToFileType(mime) {
         if (!mime) return 'file'
         if (mime.startsWith('image/')) return 'image'
@@ -394,8 +398,7 @@ export default async function handler(req, res) {
       }
       const fileType = body?.file_type ? String(body.file_type).trim() : 'file'
       const altText = (body?.alt_text && String(body.alt_text).trim()) || ''
-      const CDN_URL = process.env.R2_CDN_URL || ''
-      const fileUrl = CDN_URL ? `${CDN_URL.replace(/\/$/, '')}/${filePath}` : filePath
+      const fileUrl = `${CDN_URL.replace(/\/$/, '')}/${filePath}`
       const supabase = getSupabaseClient()
       const { count: existingCount } = await supabase.from('section_work_images').select('*', { count: 'exact', head: true }).eq('section_id', sectionId)
       const displayOrder = existingCount ?? 0
