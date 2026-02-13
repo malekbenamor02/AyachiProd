@@ -1,6 +1,16 @@
 import { requireAdmin } from './_middleware/auth.js'
 import { getSupabaseClient } from './_utils/supabase.js'
-import { uploadFileToR2, deleteFileFromR2, generateSectionFilePath, generateSectionWorkImageFilePath, getPresignedPutUrl } from './_utils/r2.js'
+import {
+  uploadFileToR2,
+  deleteFileFromR2,
+  generateSectionFilePath,
+  generateSectionWorkImageFilePath,
+  getPresignedPutUrl,
+  createMultipartUpload,
+  uploadPart,
+  completeMultipartUpload,
+  abortMultipartUpload,
+} from './_utils/r2.js'
 import { successResponse, errorResponse, corsHeaders, parseBody } from './_utils/helpers.js'
 import { handleCORS } from './_middleware/auth.js'
 import { readFileSync, unlinkSync, existsSync } from 'fs'
@@ -345,6 +355,121 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('Work images GET error:', err)
       return errorResponse('Internal server error', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  const CHUNK_SIZE = 4 * 1024 * 1024 // 4MB per chunk to stay under Vercel body limit
+
+  // POST /api/sections/:sectionId/work-images/upload-init - Start chunked upload (large files)
+  if (pathParts.length === 3 && pathParts[2] === 'upload-init' && isWorkImages && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const filename = (body?.filename && String(body.filename).trim()) || 'file'
+      const contentType = (body?.content_type && String(body.content_type).trim()) || 'application/octet-stream'
+      const supabase = getSupabaseClient()
+      const { data: section } = await supabase.from('homepage_sections').select('id').eq('id', sectionId).single()
+      if (!section) {
+        return errorResponse('Section not found', 404, 'NOT_FOUND')
+      }
+      const filePath = generateSectionWorkImageFilePath(sectionId, filename)
+      const { uploadId } = await createMultipartUpload(filePath, contentType)
+      return successResponse({ uploadId, filePath, partSize: CHUNK_SIZE }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Work images upload-init error:', err)
+      return errorResponse(err.message || 'Failed to init upload', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/sections/:sectionId/work-images/upload-part - Upload one chunk (body = raw bytes)
+  if (pathParts.length === 3 && pathParts[2] === 'upload-part' && isWorkImages && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const uploadId = req.headers['x-upload-id'] && String(req.headers['x-upload-id']).trim()
+      const filePath = req.headers['x-file-path'] && String(req.headers['x-file-path']).trim()
+      const partNumber = parseInt(req.headers['x-part-number'], 10)
+      if (!uploadId || !filePath || !partNumber || partNumber < 1) {
+        return errorResponse('Missing X-Upload-Id, X-File-Path, or X-Part-Number', 400, 'VALIDATION_ERROR')
+      }
+      const chunks = []
+      for await (const chunk of req) chunks.push(chunk)
+      const body = Buffer.concat(chunks)
+      if (body.length === 0) {
+        return errorResponse('Empty part body', 400, 'VALIDATION_ERROR')
+      }
+      const { etag } = await uploadPart(uploadId, filePath, partNumber, body)
+      return successResponse({ etag: etag.replace(/"/g, '') }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Work images upload-part error:', err)
+      return errorResponse(err.message || 'Failed to upload part', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/sections/:sectionId/work-images/upload-complete - Finish chunked upload, insert DB row
+  if (pathParts.length === 3 && pathParts[2] === 'upload-complete' && isWorkImages && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const uploadId = body?.uploadId && String(body.uploadId).trim()
+      const filePath = body?.filePath && String(body.filePath).trim()
+      const parts = body?.parts && Array.isArray(body.parts) ? body.parts : []
+      if (!uploadId || !filePath || parts.length === 0) {
+        return errorResponse('Missing uploadId, filePath, or parts', 400, 'VALIDATION_ERROR')
+      }
+      const CDN_URL = process.env.R2_CDN_URL || ''
+      if (!CDN_URL) {
+        return errorResponse('R2_CDN_URL is not set', 500, 'CONFIG_ERROR')
+      }
+      const sortedParts = parts
+        .filter((p) => p.partNumber >= 1 && p.etag)
+        .sort((a, b) => a.partNumber - b.partNumber)
+      if (sortedParts.length === 0) {
+        return errorResponse('Invalid parts array', 400, 'VALIDATION_ERROR')
+      }
+      const { fileUrl } = await completeMultipartUpload(
+        uploadId,
+        filePath,
+        sortedParts.map((p) => ({ PartNumber: p.partNumber, ETag: `"${p.etag.replace(/"/g, '')}"` }))
+      )
+      function mimeToFileType(mime) {
+        if (!mime) return 'file'
+        if (mime.startsWith('image/')) return 'image'
+        if (mime.startsWith('video/')) return 'video'
+        return 'file'
+      }
+      const fileType = body?.file_type ? String(body.file_type).trim() : 'file'
+      const altText = (body?.alt_text && String(body.alt_text).trim()) || ''
+      const supabase = getSupabaseClient()
+      const { count: existingCount } = await supabase.from('section_work_images').select('*', { count: 'exact', head: true }).eq('section_id', sectionId)
+      const displayOrder = existingCount ?? 0
+      const { data: row, error } = await supabase
+        .from('section_work_images')
+        .insert({
+          section_id: sectionId,
+          file_path: filePath,
+          file_url: fileUrl,
+          alt_text: altText,
+          display_order: displayOrder,
+          file_type: mimeToFileType(fileType),
+        })
+        .select('id, file_url, alt_text, display_order, file_type')
+        .single()
+      if (error) {
+        return errorResponse(error.message || 'Failed to save record', 500, 'DATABASE_ERROR')
+      }
+      return successResponse(row, 201, corsHeaders())
+    } catch (err) {
+      console.error('Work images upload-complete error:', err)
+      return errorResponse(err.message || 'Failed to complete upload', 500, 'INTERNAL_ERROR')
     }
   }
 

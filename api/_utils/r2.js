@@ -1,4 +1,13 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
+} from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 // Cloudflare R2 configuration (S3-compatible)
@@ -119,4 +128,63 @@ export function generateSectionWorkImageFilePath(sectionId, originalFileName) {
   const timestamp = Date.now()
   const sanitizedFileName = originalFileName.replace(/[^a-zA-Z0-9.-]/g, '_')
   return `sections/${sectionId}/work/${timestamp}-${sanitizedFileName}`
+}
+
+/**
+ * Initiate multipart upload (for chunked large files). Returns uploadId.
+ */
+export async function createMultipartUpload(filePath, contentType = 'application/octet-stream') {
+  const command = new CreateMultipartUploadCommand({
+    Bucket: BUCKET_NAME,
+    Key: filePath,
+    ContentType: contentType,
+  })
+  const out = await r2Client.send(command)
+  return { uploadId: out.UploadId }
+}
+
+/**
+ * Upload one part of a multipart upload.
+ */
+export async function uploadPart(uploadId, filePath, partNumber, body) {
+  const command = new UploadPartCommand({
+    Bucket: BUCKET_NAME,
+    Key: filePath,
+    UploadId: uploadId,
+    PartNumber: partNumber,
+    Body: body,
+  })
+  const out = await r2Client.send(command)
+  return { etag: out.ETag }
+}
+
+/**
+ * Complete multipart upload.
+ * parts: Array<{ PartNumber: number, ETag: string }>
+ */
+export async function completeMultipartUpload(uploadId, filePath, parts) {
+  const command = new CompleteMultipartUploadCommand({
+    Bucket: BUCKET_NAME,
+    Key: filePath,
+    UploadId: uploadId,
+    MultipartUpload: {
+      Parts: parts.map((p) => ({ PartNumber: p.PartNumber, ETag: p.ETag })),
+    },
+  })
+  await r2Client.send(command)
+  const fileUrl = CDN_URL ? `${CDN_URL.replace(/\/$/, '')}/${filePath}` : filePath
+  return { filePath, fileUrl }
+}
+
+/**
+ * Abort multipart upload (cleanup on failure).
+ */
+export async function abortMultipartUpload(uploadId, filePath) {
+  await r2Client.send(
+    new AbortMultipartUploadCommand({
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+      UploadId: uploadId,
+    })
+  )
 }
