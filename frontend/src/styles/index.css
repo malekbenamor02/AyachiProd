@@ -1206,6 +1206,7 @@ body {
   text-align: center;
 }
 .sections-editor-field-submit {
+  flex-basis: 100%;
   align-self: flex-end;
 }
 .sections-editor-label {
@@ -2620,6 +2621,20 @@ body {
   position: relative;
   width: 100%;
   min-width: 0;
+}
+/* When ThemeSelect root has sections-editor-input, only the trigger should look like an input (avoid double box) */
+.theme-select.sections-editor-input,
+.theme-select.sections-editor-select {
+  border: none;
+  padding: 0;
+  background: transparent;
+  min-width: 0;
+  box-shadow: none;
+}
+.theme-select.sections-editor-input:focus,
+.theme-select.sections-editor-select:focus {
+  outline: none;
+  box-shadow: none;
 }
 .theme-select-trigger {
   width: 100%;

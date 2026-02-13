@@ -27,10 +27,14 @@ const ThemeSelect = ({
     const updatePosition = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect()
+        const dropdownWidth = Math.max(rect.width, 160)
+        let left = rect.left
+        if (left + dropdownWidth > window.innerWidth) left = Math.max(0, window.innerWidth - dropdownWidth)
+        if (left < 0) left = 0
         setPosition({
           top: rect.bottom + 4,
-          left: rect.left,
-          width: Math.max(rect.width, 160),
+          left,
+          width: dropdownWidth,
         })
       }
     }

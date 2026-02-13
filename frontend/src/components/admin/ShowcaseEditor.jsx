@@ -3,7 +3,7 @@ import { showcaseService } from '../../services/showcaseService'
 import ConfirmDialog from '../common/ConfirmDialog'
 import '../../styles/index.css'
 
-const ShowcaseEditor = ({ onBack }) => {
+const ShowcaseEditor = ({ onBack, onStatsRefresh }) => {
   const [images, setImages] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -43,6 +43,7 @@ const ShowcaseEditor = ({ onBack }) => {
       setAltText('')
       e.target.value = ''
       await load()
+      onStatsRefresh?.()
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Upload failed')
     } finally {
@@ -62,7 +63,8 @@ const ShowcaseEditor = ({ onBack }) => {
     setError('')
     try {
       await showcaseService.deleteImage(id)
-      await load()
+      setImages((prev) => prev.filter((img) => img.id !== id))
+      onStatsRefresh?.()
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Delete failed')
     } finally {

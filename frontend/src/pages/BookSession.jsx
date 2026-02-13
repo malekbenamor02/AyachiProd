@@ -238,7 +238,7 @@ const BookSession = () => {
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
-                {loadingCat && <span className="book-session-hint">Loading categories…</span>}
+                {loadingCat && <span className="book-session-hint">Loading categoriesï¿½</span>}
               </div>
 
               <div className="book-session-field book-session-field--reveal">
@@ -276,14 +276,14 @@ const BookSession = () => {
                 value={form.description}
                 onChange={handleChange}
                 required
-                placeholder="What you want exactly, location ideas, or any notes…"
+                placeholder="What you want exactly, location ideas, or any notesï¿½"
                 rows={4}
               />
             </div>
 
             <div className="book-session-submit-wrap">
               <button type="submit" className="book-session-submit" disabled={submitting}>
-                {submitting ? 'Sending…' : 'Send request'}
+                {submitting ? 'Sendingï¿½' : 'Send request'}
               </button>
             </div>
           </form>

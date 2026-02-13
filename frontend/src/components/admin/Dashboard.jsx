@@ -131,9 +131,9 @@ const Dashboard = () => {
 
       {/* Main Content */}
       {view === 'showcase' ? (
-        <ShowcaseEditor onBack={() => setView('list')} />
+        <ShowcaseEditor onBack={() => setView('list')} onStatsRefresh={loadStats} />
       ) : view === 'sections' ? (
-        <SectionsEditor onBack={() => setView('list')} />
+        <SectionsEditor onBack={() => setView('list')} onStatsRefresh={loadStats} />
       ) : view === 'bookings' ? (
         <BookingsList onBack={() => setView('list')} />
       ) : view === 'calendar' ? (
@@ -149,11 +149,13 @@ const Dashboard = () => {
         <GalleryDetail
           galleryId={selectedGalleryId}
           onBack={() => setView('list')}
+          onStatsRefresh={loadStats}
         />
       ) : (
         <GalleryList
           onSelectGallery={handleSelectGallery}
           onCreateNew={handleCreateNew}
+          onStatsRefresh={loadStats}
         />
       )}
     </div>

@@ -3,7 +3,7 @@ import { galleryService } from '../../services/galleryService'
 import ConfirmDialog from '../common/ConfirmDialog'
 import '../../styles/index.css'
 
-const GalleryList = ({ onSelectGallery, onCreateNew }) => {
+const GalleryList = ({ onSelectGallery, onCreateNew, onStatsRefresh }) => {
   const [galleries, setGalleries] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -39,6 +39,8 @@ const GalleryList = ({ onSelectGallery, onCreateNew }) => {
     setConfirmDelete(null)
     try {
       await galleryService.deleteGallery(id)
+      setGalleries((prev) => prev.filter((g) => g.id !== id))
+      onStatsRefresh?.()
       loadGalleries()
     } catch (error) {
       setAlertError({ message: 'Failed to delete gallery: ' + (error.message || 'Unknown error') })

@@ -20,7 +20,7 @@ const YEAR_SELECT_OPTIONS = [
   ...YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) })),
 ]
 
-const SectionsEditor = ({ onBack }) => {
+const SectionsEditor = ({ onBack, onStatsRefresh }) => {
   const [sections, setSections] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -129,6 +129,7 @@ const SectionsEditor = ({ onBack }) => {
       if (addFileInputRef.current) addFileInputRef.current.value = ''
       setToast('Section added')
       await load()
+      onStatsRefresh?.()
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Upload failed')
     } finally {
@@ -149,6 +150,7 @@ const SectionsEditor = ({ onBack }) => {
       setEditingId(null)
       setToast('Section updated')
       await load()
+      onStatsRefresh?.()
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Update failed')
     }
@@ -170,12 +172,22 @@ const SectionsEditor = ({ onBack }) => {
     try {
       if (type === 'section') {
         await sectionsService.deleteSection(id)
+        setSections((prev) => prev.filter((s) => s.id !== id))
+        setWorkImagesMap((prev) => {
+          const next = { ...prev }
+          delete next[id]
+          return next
+        })
         setToast('Section removed')
-        await load()
+        onStatsRefresh?.()
       } else {
         await sectionsService.deleteWorkImage(sectionId, id)
+        setWorkImagesMap((prev) => ({
+          ...prev,
+          [sectionId]: (prev[sectionId] || []).filter((img) => img.id !== id),
+        }))
         setToast('Image removed')
-        await loadWorkImages(sectionId)
+        onStatsRefresh?.()
       }
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Delete failed')
@@ -241,6 +253,7 @@ const SectionsEditor = ({ onBack }) => {
       await loadWorkImages(sectionId)
       const ref = workImageInputRefs.current[sectionId]
       if (ref) ref.value = ''
+      onStatsRefresh?.()
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Upload failed')
     } finally {

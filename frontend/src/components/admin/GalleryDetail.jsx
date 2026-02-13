@@ -5,7 +5,7 @@ import FileUpload from './FileUpload'
 import GalleryForm from './GalleryForm'
 import '../../styles/index.css'
 
-const GalleryDetail = ({ galleryId, onBack }) => {
+const GalleryDetail = ({ galleryId, onBack, onStatsRefresh }) => {
   const [gallery, setGallery] = useState(null)
   const [files, setFiles] = useState([])
   const [loading, setLoading] = useState(true)
@@ -36,6 +36,7 @@ const GalleryDetail = ({ galleryId, onBack }) => {
   const handleSave = () => {
     setMode('view')
     loadGallery()
+    onStatsRefresh?.()
   }
 
   if (loading) {
@@ -110,7 +111,10 @@ const GalleryDetail = ({ galleryId, onBack }) => {
         <div style={{ marginBottom: '48px' }}>
           <FileUpload
             galleryId={galleryId}
-            onUploadComplete={loadGallery}
+            onUploadComplete={() => {
+              loadGallery()
+              onStatsRefresh?.()
+            }}
           />
         </div>
       ) : (
