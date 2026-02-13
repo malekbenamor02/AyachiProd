@@ -20,6 +20,18 @@ const YEAR_SELECT_OPTIONS = [
   ...YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) })),
 ]
 
+// Ensure we never set error state to an object (React cannot render objects; 413 etc. may return { code, message })
+function errorMessage(err, fallback = 'Something went wrong') {
+  if (!err) return fallback
+  const d = err.response?.data
+  if (d != null && typeof d === 'object') {
+    if (typeof d.error === 'string') return d.error
+    if (typeof d.message === 'string') return d.message
+  }
+  if (typeof err.message === 'string') return err.message
+  return fallback
+}
+
 const SectionsEditor = ({ onBack, onStatsRefresh }) => {
   const [sections, setSections] = useState([])
   const [categories, setCategories] = useState([])
@@ -71,7 +83,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       const data = await sectionsService.getSections()
       setSections(Array.isArray(data) ? data : [])
     } catch (e) {
-      setError(e.message || 'Failed to load sections')
+      setError(errorMessage(e, 'Failed to load sections'))
       setSections([])
     } finally {
       setLoading(false)
@@ -104,7 +116,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       setShowNewCategory(false)
       setToast('Category added')
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Failed to add category')
+      setError(errorMessage(err, 'Failed to add category'))
     }
   }
 
@@ -132,7 +144,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       await load()
       onStatsRefresh?.()
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Upload failed')
+      setError(errorMessage(err, 'Upload failed'))
     } finally {
       setUploading(false)
     }
@@ -153,7 +165,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       await load()
       onStatsRefresh?.()
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Update failed')
+      setError(errorMessage(err, 'Update failed'))
     }
   }
 
@@ -191,7 +203,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
         onStatsRefresh?.()
       }
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Delete failed')
+      setError(errorMessage(err, 'Delete failed'))
     } finally {
       setRemovingId(null)
       setRemovingWorkImageId(null)
@@ -210,7 +222,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       setToast('Order updated')
       setSections(newOrder)
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Reorder failed')
+      setError(errorMessage(err, 'Reorder failed'))
     }
   }
 
@@ -272,11 +284,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       if (ref) ref.value = ''
       onStatsRefresh?.()
     } catch (err) {
-      const message =
-        (err && err.response && err.response.data && typeof err.response.data.error === 'string' && err.response.data.error) ||
-        (err && typeof err.message === 'string' && err.message) ||
-        'Upload failed'
-      setError(message)
+      setError(errorMessage(err, 'Upload failed'))
     } finally {
       setUploadingWorkSectionId(null)
       setUploadWorkProgress(null)
@@ -300,7 +308,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       setWorkImagesMap((prev) => ({ ...prev, [sectionId]: newOrder }))
       setToast('Order updated')
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Reorder failed')
+      setError(errorMessage(err, 'Reorder failed'))
     }
   }
 
@@ -329,7 +337,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
         </button>
       </header>
 
-      {error && <div className="sections-editor-error">{error}</div>}
+      {error && <div className="sections-editor-error">{typeof error === 'string' ? error : String(error)}</div>}
       {toast && <div className="sections-editor-toast">{toast}</div>}
 
       <form onSubmit={handleAdd} className="sections-editor-add-card">

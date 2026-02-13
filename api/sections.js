@@ -76,7 +76,87 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST /api/sections/upload - Add section (admin)
+  // POST /api/sections/upload-url - Get presigned PUT URL for section image (avoids 413 on Vercel)
+  if (path === 'upload-url' && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const filename = (body?.filename && String(body.filename).trim()) || body?.originalFilename || 'image.jpg'
+      const contentType = (body?.content_type && String(body.content_type).trim()) || body?.contentType || 'image/jpeg'
+      const filePath = generateSectionFilePath(filename)
+      const putUrl = await getPresignedPutUrl(filePath, contentType, 900)
+      return successResponse({ putUrl, filePath }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Section upload-url error:', err)
+      return errorResponse(err.message || 'Failed to get upload URL', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/sections/upload-complete - Create section after client PUT file to R2 (admin)
+  if (path === 'upload-complete' && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const filePath = (body?.filePath && String(body.filePath).trim()) || body?.file_path
+      if (!filePath) {
+        return errorResponse('Missing filePath', 400, 'VALIDATION_ERROR')
+      }
+      const CDN_URL = (process.env.R2_CDN_URL || '').replace(/\/$/, '')
+      const fileUrl = CDN_URL ? `${CDN_URL}/${filePath}` : filePath
+      const title = String(body?.title ?? '').trim() || 'Untitled'
+      const categoryId = (body?.category_id && String(body.category_id).trim()) || null
+      const sectionMonth = parseInt(body?.section_month, 10)
+      const sectionYear = parseInt(body?.section_year, 10)
+      const altText = String(body?.alt_text ?? '').trim() || title
+
+      const supabase = getSupabaseClient()
+      const { count } = await supabase.from('homepage_sections').select('*', { count: 'exact', head: true })
+      const displayOrder = count ?? 0
+
+      let categoryName = ''
+      if (categoryId) {
+        const { data: cat } = await supabase.from('section_categories').select('name').eq('id', categoryId).single()
+        categoryName = cat?.name || ''
+      }
+
+      const { data: row, error } = await supabase
+        .from('homepage_sections')
+        .insert({
+          title,
+          category: categoryName,
+          year: sectionYear ? `${sectionYear}` : '',
+          category_id: categoryId || null,
+          section_month: (sectionMonth >= 1 && sectionMonth <= 12) ? sectionMonth : null,
+          section_year: sectionYear || null,
+          file_path: filePath,
+          file_url: fileUrl,
+          alt_text: altText,
+          display_order: displayOrder,
+        })
+        .select('id, title, category, year, category_id, section_month, section_year, file_url, alt_text, display_order')
+        .single()
+
+      if (error) {
+        console.error('Section upload-complete insert error:', error.message, error.code)
+        const msg = error.code === '42P01'
+          ? 'Table homepage_sections missing. Run supabase-homepage-sections-migration.sql.'
+          : (error.message || 'Failed to save section')
+        return errorResponse(msg, 500, 'DATABASE_ERROR')
+      }
+      return successResponse(row, 201, corsHeaders())
+    } catch (err) {
+      console.error('Section upload-complete error:', err)
+      return errorResponse(err.message || 'Failed to complete upload', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/sections/upload - Add section (admin) - multipart, small files only; use upload-url + upload-complete for large files
   if (path === 'upload' && req.method === 'POST') {
     try {
       const authResult = requireAdmin(req)

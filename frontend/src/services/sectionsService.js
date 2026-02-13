@@ -11,17 +11,32 @@ export const sectionsService = {
     return data?.data
   },
 
+  /**
+   * Add a new section with an image. Uses presigned URL (PUT to R2) to avoid Vercel 413 body limit.
+   */
   async uploadSection(file, { title = '', category_id = '', section_month = '', section_year = '', alt_text = '' }) {
-    const formData = new FormData()
-    formData.append('image', file)
-    formData.append('title', title)
-    if (category_id) formData.append('category_id', category_id)
-    if (section_month) formData.append('section_month', String(section_month))
-    if (section_year) formData.append('section_year', String(section_year))
-    if (alt_text) formData.append('alt_text', alt_text)
-    const { data } = await api.post('/api/sections/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 120000, // 2 min for large images
+    const filename = file.name || 'image.jpg'
+    const contentType = file.type || 'image/jpeg'
+    const { data: urlData } = await api.post('/api/sections/upload-url', {
+      filename,
+      content_type: contentType,
+    })
+    const putUrl = urlData?.data?.putUrl ?? urlData?.putUrl
+    const filePath = urlData?.data?.filePath ?? urlData?.filePath
+    if (!putUrl || !filePath) throw new Error('Invalid upload-url response')
+    const putRes = await fetch(putUrl, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': contentType },
+    })
+    if (!putRes.ok) throw new Error(`Upload failed: ${putRes.status}`)
+    const { data } = await api.post('/api/sections/upload-complete', {
+      filePath,
+      title: title || 'Untitled',
+      category_id: category_id || null,
+      section_month: section_month || null,
+      section_year: section_year || null,
+      alt_text: alt_text || '',
     })
     return data?.data
   },
