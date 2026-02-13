@@ -75,6 +75,113 @@ body {
     }
 }
 
+/* Client access form — modern password + button (theme: black/white) */
+.client-access-page .client-access-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.client-access-page .client-access-error {
+  padding: 14px 16px;
+  margin-bottom: 24px;
+  background-color: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 12px;
+  color: #b91c1c;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.client-access-page .client-access-field {
+  margin-bottom: 24px;
+}
+
+.client-access-page .client-access-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #000000;
+  letter-spacing: -0.02em;
+  font-family: 'Inter', sans-serif;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.9), 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.client-access-page .client-access-input {
+  width: 100%;
+  padding: 16px 18px;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: #000000;
+  background-color: #ffffff;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.client-access-page .client-access-input::placeholder {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.client-access-page .client-access-input:hover {
+  border-color: rgba(0, 0, 0, 0.35);
+}
+
+.client-access-page .client-access-input:focus {
+  border-color: #000000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+}
+
+.client-access-page .client-access-btn {
+  width: 100%;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+  color: #ffffff !important;
+  background-color: #000000 !important;
+  background: #000000 !important;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.client-access-page .client-access-btn:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  background-color: #000000 !important;
+  background: #000000 !important;
+}
+
+.client-access-page .client-access-btn:active:not(:disabled) {
+  transform: translateY(0);
+  background-color: #000000 !important;
+  background: #000000 !important;
+}
+
+.client-access-page .client-access-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #000000 !important;
+  background: #000000 !important;
+}
+
 /* Navigation Header — fixed at top, does not scroll */
 .header {
     position: fixed;
