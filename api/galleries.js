@@ -220,7 +220,9 @@ export default async function handler(req, res) {
         return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
       }
       const body = await parseBody(req)
-      const fileIds = Array.isArray(body?.fileIds) ? body.fileIds.filter((id) => Number.isInteger(Number(id)) && Number(id) > 0).map((id) => Number(id)) : []
+      const fileIds = Array.isArray(body?.fileIds)
+        ? body.fileIds.filter((id) => id != null && String(id).trim() !== '').map((id) => String(id).trim())
+        : []
       if (fileIds.length === 0) {
         return errorResponse('Missing or invalid fileIds array', 400, 'VALIDATION_ERROR')
       }
