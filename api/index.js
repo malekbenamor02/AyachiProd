@@ -137,7 +137,11 @@ app.all('/api/showcase', async (req, res) => {
 })
 app.all('/api/showcase/*', async (req, res) => {
   try {
-    const response = await showcaseHandler(req, res)
+    // Raw req only for multipart POST /api/showcase/upload (body goes to formidable)
+    const path = (req.originalUrl || req.url || '').split('?')[0]
+    const isShowcaseMultipart = req.method === 'POST' && path === '/api/showcase/upload'
+    const request = isShowcaseMultipart ? req : createVercelRequest(req)
+    const response = await showcaseHandler(request, res)
     sendVercelResponse(res, response)
   } catch (error) {
     console.error('Showcase error:', error)

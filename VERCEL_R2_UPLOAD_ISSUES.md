@@ -48,6 +48,7 @@ This document lists all known issues when uploading work images (homepage sectio
   - Method **PUT**.
   - Header **Content-Type** (and any others the browser sends).
 - **If CORS is correct and it still fails:** The R2 S3 API host might not support browser uploads the same way; you may need a different strategy (e.g. backend that runs elsewhere with higher limits, or a different storage upload path).
+- **Showcase (marquee) uploads:** Same 413 limit applies. For files &gt; 4 MB we use **presigned single PUT**: `POST /api/showcase/upload-url` → browser **PUT** file to R2 → `POST /api/showcase/upload-complete`. R2 CORS must allow **PUT** for these to work.
 
 ---
 

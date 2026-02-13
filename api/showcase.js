@@ -1,8 +1,9 @@
 import { requireAdmin } from './_middleware/auth.js'
 import { getSupabaseClient } from './_utils/supabase.js'
-import { uploadFileToR2, deleteFileFromR2, generateShowcaseFilePath } from './_utils/r2.js'
+import { uploadFileToR2, deleteFileFromR2, generateShowcaseFilePath, getPresignedPutUrl } from './_utils/r2.js'
 import { successResponse, errorResponse, corsHeaders } from './_utils/helpers.js'
 import { handleCORS } from './_middleware/auth.js'
+import { parseBody } from './_utils/helpers.js'
 import { readFileSync } from 'fs'
 import { unlinkSync, existsSync } from 'fs'
 import { tmpdir } from 'os'
@@ -40,7 +41,60 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST /api/showcase/upload - Upload image (admin)
+  // POST /api/showcase/upload-url - Get presigned PUT URL (large files, avoid 413)
+  if (path === 'upload-url' && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const filename = (body?.filename && String(body.filename).trim()) || body?.originalFilename || 'image.jpg'
+      const contentType = (body?.content_type && String(body.content_type).trim()) || body?.contentType || 'image/jpeg'
+      const filePath = generateShowcaseFilePath(filename)
+      const putUrl = await getPresignedPutUrl(filePath, contentType, 900)
+      return successResponse({ putUrl, filePath }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Showcase upload-url error:', err)
+      return errorResponse(err.message || 'Failed to get upload URL', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/showcase/upload-complete - Register uploaded file in DB after client PUT to R2
+  if (path === 'upload-complete' && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const filePath = (body?.filePath && String(body.filePath).trim()) || body?.file_path
+      if (!filePath) {
+        return errorResponse('Missing filePath', 400, 'VALIDATION_ERROR')
+      }
+      const CDN_URL = (process.env.R2_CDN_URL || '').replace(/\/$/, '')
+      const fileUrl = CDN_URL ? `${CDN_URL}/${filePath}` : filePath
+      const altText = (body?.alt_text && String(body.alt_text).trim()) || 'Showcase image'
+      const supabase = getSupabaseClient()
+      const { count } = await supabase.from('showcase_images').select('*', { count: 'exact', head: true })
+      const displayOrder = count ?? 0
+      const { data: row, error } = await supabase
+        .from('showcase_images')
+        .insert({ file_path: filePath, file_url: fileUrl, alt_text: altText, display_order: displayOrder })
+        .select('id, file_url, alt_text, display_order')
+        .single()
+      if (error) {
+        console.error('Showcase upload-complete insert error:', error.message)
+        return errorResponse(error.message || 'Failed to save showcase image', 500, 'DATABASE_ERROR')
+      }
+      return successResponse(row, 201, corsHeaders())
+    } catch (err) {
+      console.error('Showcase upload-complete error:', err)
+      return errorResponse(err.message || 'Failed to complete upload', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/showcase/upload - Upload image via multipart (small files only; large files use upload-url + PUT)
   if (path === 'upload' && req.method === 'POST') {
     try {
       const authResult = requireAdmin(req)
