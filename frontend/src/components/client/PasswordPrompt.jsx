@@ -44,7 +44,10 @@ const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
             backgroundImage: `url(${backgroundUrl})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
+            backgroundRepeat: 'no-repeat',
+            filter: 'blur(3px)',
+            WebkitFilter: 'blur(px)',
+            transform: 'scale(1.02)'
           }}
           aria-hidden="true"
         />
@@ -71,12 +74,10 @@ const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
           )}
 
           <div className="client-access-field">
-            <label className="client-access-label" htmlFor="client-access-password">
-              Password
-            </label>
             <input
               id="client-access-password"
               type="password"
+              aria-label="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
