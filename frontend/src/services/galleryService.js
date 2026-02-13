@@ -73,9 +73,30 @@ export const galleryService = {
     return response.data.data
   },
 
+  async uploadGalleryBackground(galleryId, file) {
+    const formData = new FormData()
+    formData.append('image', file)
+    const res = await api.post(`/api/galleries/${galleryId}/background`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    const data = res?.data?.data ?? res?.data
+    return data?.client_access_background_url ?? ''
+  },
+
+  async clearGalleryBackground(galleryId) {
+    await api.put(`/api/galleries/${galleryId}`, { client_access_background_url: null })
+  },
+
   async deleteGallery(id) {
     const response = await api.delete(`/api/galleries/${id}`)
     return response.data
+  },
+
+  async deleteGalleryFiles(galleryId, fileIds) {
+    const response = await api.delete(`/api/galleries/${galleryId}/files`, {
+      data: { fileIds },
+    })
+    return response?.data
   },
 
   async getQRCode(galleryId) {

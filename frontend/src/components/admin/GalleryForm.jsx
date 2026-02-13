@@ -15,6 +15,9 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [backgroundFile, setBackgroundFile] = useState(null)
+  const [currentBackgroundUrl, setCurrentBackgroundUrl] = useState('')
+  const [removeBackground, setRemoveBackground] = useState(false)
 
   useEffect(() => {
     if (galleryId) {
@@ -29,12 +32,14 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
         name: gallery.name || '',
         client_name: gallery.client_name || '',
         client_email: gallery.client_email || '',
-        password: '', // Don't load password
+        password: '',
         description: gallery.description || '',
         event_date: gallery.event_date || ''
       })
-    } catch (error) {
-      setError('Failed to load gallery: ' + error.message)
+      setCurrentBackgroundUrl(gallery.client_access_background_url || '')
+      setRemoveBackground(false)
+    } catch (err) {
+      setError('Failed to load gallery: ' + (err.message || ''))
     }
   }
 
@@ -45,13 +50,22 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
 
     try {
       if (galleryId) {
-        await galleryService.updateGallery(galleryId, formData)
+        const updatePayload = { ...formData }
+        if (removeBackground) updatePayload.client_access_background_url = null
+        await galleryService.updateGallery(galleryId, updatePayload)
+        if (backgroundFile) {
+          await galleryService.uploadGalleryBackground(galleryId, backgroundFile)
+        }
       } else {
-        await galleryService.createGallery(formData)
+        const created = await galleryService.createGallery(formData)
+        const id = created?.id
+        if (id && backgroundFile) {
+          await galleryService.uploadGalleryBackground(id, backgroundFile)
+        }
       }
       onSave()
-    } catch (error) {
-      setError(error.message || 'Failed to save gallery')
+    } catch (err) {
+      setError(err.message || 'Failed to save gallery')
     } finally {
       setLoading(false)
     }
@@ -241,6 +255,38 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
               resize: 'vertical'
             }}
           />
+        </div>
+
+        <div style={{ marginBottom: '32px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 400 }}>
+            Client access background (optional)
+          </label>
+          <p style={{ fontSize: '13px', color: '#737373', marginBottom: '12px' }}>
+            Image shown behind the password screen when clients open this gallery link. Leave empty for white background.
+          </p>
+          {galleryId && currentBackgroundUrl && !removeBackground && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ maxWidth: 280, aspectRatio: '16/10', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)', backgroundColor: '#f5f5f5' }}>
+                <img src={currentBackgroundUrl} alt="Current background" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <button
+                type="button"
+                onClick={() => { setRemoveBackground(true); setCurrentBackgroundUrl(''); setBackgroundFile(null); }}
+                style={{ marginTop: 8, padding: '8px 16px', fontSize: 14, background: 'transparent', border: '1px solid #c00', color: '#c00', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Remove background
+              </button>
+            </div>
+          )}
+          {(!galleryId || !currentBackgroundUrl || removeBackground || backgroundFile) && (
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => { setBackgroundFile(e.target.files?.[0] || null); if (galleryId) setRemoveBackground(false); }}
+              style={{ display: 'block', fontSize: 14 }}
+            />
+          )}
+          {backgroundFile && <p style={{ fontSize: 13, color: '#525252', marginTop: 8 }}>New image selected: {backgroundFile.name}</p>}
         </div>
 
         <div style={{ display: 'flex', gap: '16px' }}>

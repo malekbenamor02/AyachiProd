@@ -18,11 +18,12 @@ const ClientGallery = () => {
   const authenticated = !!accessToken && !!galleryData
 
   useEffect(() => {
-    api.get('/api/client/settings').then((res) => {
-      const url = res?.data?.data?.client_access_background_url || res?.data?.client_access_background_url || ''
-      setBackgroundUrl(url || '')
+    if (!token) return
+    api.get(`/api/client/settings/${token}`).then((res) => {
+      const url = res?.data?.data?.client_access_background_url ?? res?.data?.client_access_background_url ?? ''
+      setBackgroundUrl(String(url || ''))
     }).catch(() => setBackgroundUrl(''))
-  }, [])
+  }, [token])
 
   useEffect(() => {
     if (!accessToken) return

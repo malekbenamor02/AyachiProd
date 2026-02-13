@@ -94,7 +94,10 @@ app.all('/api/galleries', async (req, res) => {
 app.all('/api/galleries/*', async (req, res) => {
   try {
     const path = (req.originalUrl || req.url || '').split('?')[0]
-    const isMultipartUpload = req.method === 'POST' && path.endsWith('/upload') && !path.includes('upload-url') && !path.includes('upload-complete')
+    const isMultipartUpload = req.method === 'POST' && (
+      (path.endsWith('/upload') && !path.includes('upload-url') && !path.includes('upload-complete')) ||
+      path.endsWith('/background')
+    )
     const request = isMultipartUpload ? req : createVercelRequest(req)
     const response = await galleriesHandler(request, res)
     sendVercelResponse(res, response)

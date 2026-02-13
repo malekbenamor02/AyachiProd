@@ -3,6 +3,7 @@ import { galleryService } from '../../services/galleryService'
 import QRCodeDisplay from './QRCodeDisplay'
 import FileUpload from './FileUpload'
 import GalleryForm from './GalleryForm'
+import ConfirmDialog from '../common/ConfirmDialog'
 import '../../styles/index.css'
 
 const GalleryDetail = ({ galleryId, onBack, onStatsRefresh }) => {
@@ -10,6 +11,9 @@ const GalleryDetail = ({ galleryId, onBack, onStatsRefresh }) => {
   const [files, setFiles] = useState([])
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState('view') // 'view', 'edit', 'upload'
+  const [selectedFileIds, setSelectedFileIds] = useState(new Set())
+  const [removing, setRemoving] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   useEffect(() => {
     if (galleryId) {
@@ -40,61 +44,80 @@ const GalleryDetail = ({ galleryId, onBack, onStatsRefresh }) => {
     onStatsRefresh?.()
   }
 
+  const toggleFileSelection = (id) => {
+    setSelectedFileIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAllFiles = () => {
+    setSelectedFileIds(new Set(files.map((f) => f.id)))
+  }
+
+  const clearSelection = () => {
+    setSelectedFileIds(new Set())
+  }
+
+  const handleConfirmRemoveFiles = async () => {
+    const ids = Array.from(selectedFileIds)
+    setConfirmRemove(false)
+    if (ids.length === 0) return
+    setRemoving(true)
+    try {
+      await galleryService.deleteGalleryFiles(galleryId, ids)
+      setSelectedFileIds(new Set())
+      await loadGallery()
+      onStatsRefresh?.()
+    } catch (err) {
+      console.error('Failed to remove files:', err)
+    } finally {
+      setRemoving(false)
+    }
+  }
+
   if (loading) {
-    return <div style={{ padding: '48px', textAlign: 'center' }}>Loading...</div>
+    return <div className="gallery-detail" style={{ textAlign: 'center' }}>Loading...</div>
   }
 
   if (!gallery) {
-    return <div>Gallery not found</div>
+    return <div className="gallery-detail">Gallery not found</div>
   }
 
   return (
-    <div style={{ padding: '48px' }}>
-      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
+    <div className="gallery-detail">
+      <div className="gallery-detail-header">
+        <div className="gallery-detail-header-left">
           <button
+            type="button"
             onClick={onBack}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: 'transparent',
-              border: '1px solid rgba(0, 0, 0, 0.1)',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              marginBottom: '16px',
-              fontSize: '14px'
-            }}
+            className="gallery-detail-back"
           >
             ← Back to Galleries
           </button>
-          <h1 style={{ fontSize: '48px', fontWeight: 700, letterSpacing: '-0.05em' }}>
-            {gallery.name}
-          </h1>
+          <h1 className="gallery-detail-title">{gallery.name}</h1>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div className="gallery-detail-actions">
           <button
+            type="button"
             onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')}
+            className="gallery-detail-btn"
             style={{
-              padding: '12px 24px',
               backgroundColor: mode === 'edit' ? '#000000' : 'transparent',
-              color: mode === 'edit' ? '#FFFFFF' : '#000000',
-              border: '1px solid #000000',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
+              color: mode === 'edit' ? '#FFFFFF' : '#000000'
             }}
           >
             {mode === 'edit' ? 'Cancel Edit' : 'Edit'}
           </button>
           <button
+            type="button"
             onClick={() => setMode(mode === 'upload' ? 'view' : 'upload')}
+            className="gallery-detail-btn"
             style={{
-              padding: '12px 24px',
               backgroundColor: mode === 'upload' ? '#000000' : 'transparent',
-              color: mode === 'upload' ? '#FFFFFF' : '#000000',
-              border: '1px solid #000000',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
+              color: mode === 'upload' ? '#FFFFFF' : '#000000'
             }}
           >
             {mode === 'upload' ? 'Cancel Upload' : 'Upload Files'}
@@ -120,16 +143,9 @@ const GalleryDetail = ({ galleryId, onBack, onStatsRefresh }) => {
         </div>
       ) : (
         <>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '32px',
-            marginBottom: '48px'
-          }}>
-            <div>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '24px' }}>
-                Gallery Information
-              </h2>
+          <div className="gallery-detail-info-grid">
+            <div className="gallery-detail-info-block">
+              <h2 className="gallery-detail-info-title">Gallery Information</h2>
               <div style={{ display: 'grid', gap: '16px' }}>
                 <div>
                   <p style={{ fontSize: '12px', color: '#737373', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>
@@ -165,59 +181,101 @@ const GalleryDetail = ({ galleryId, onBack, onStatsRefresh }) => {
                 </div>
               </div>
             </div>
-            <div>
+            <div className="gallery-detail-qr-wrap">
               <QRCodeDisplay galleryId={galleryId} />
             </div>
           </div>
 
-          <div>
-            <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '24px' }}>
-              Files ({files.length})
-            </h2>
+          <div className="gallery-detail-files">
+            <div className="gallery-detail-files-toolbar">
+              <h2 className="gallery-detail-files-title">Files ({files.length})</h2>
+              {files.length > 0 && (
+                <>
+                  <button type="button" onClick={selectAllFiles} className="gallery-detail-files-btn gallery-detail-files-btn--secondary">
+                    Select all
+                  </button>
+                  <button type="button" onClick={clearSelection} className="gallery-detail-files-btn gallery-detail-files-btn--secondary">
+                    Deselect all
+                  </button>
+                  {selectedFileIds.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmRemove(true)}
+                      disabled={removing}
+                      className="gallery-detail-files-btn gallery-detail-files-btn--primary"
+                    >
+                      {removing ? 'Removing…' : `Remove selected (${selectedFileIds.size})`}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
             {files.length === 0 ? (
-              <div style={{
-                padding: '48px',
-                textAlign: 'center',
-                border: '1px solid rgba(0, 0, 0, 0.1)',
-                borderRadius: '8px',
-                color: '#525252'
-              }}>
-                <p style={{ marginBottom: '16px' }}>No files uploaded yet.</p>
+              <div className="gallery-detail-empty">
+                <p>No files uploaded yet.</p>
                 <button
+                  type="button"
                   onClick={() => setMode('upload')}
-                  style={{
-                    padding: '12px 24px',
-                    backgroundColor: '#000000',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
+                  className="gallery-detail-btn gallery-detail-files-btn--primary"
                 >
                   Upload Files
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
-                {files.map(file => (
-                  <div key={file.id} style={{
-                    aspectRatio: '4/3',
-                    border: '1px solid rgba(0, 0, 0, 0.1)',
-                    borderRadius: '8px',
-                    overflow: 'hidden'
-                  }}>
-                    <img
-                      src={file.thumbnail_url || file.file_url}
-                      alt={file.original_name}
+              <>
+                <ConfirmDialog
+                  open={confirmRemove}
+                  title="Remove selected files?"
+                  message={`This will permanently remove ${selectedFileIds.size} file(s) from this gallery.`}
+                  confirmLabel="Remove"
+                  cancelLabel="Cancel"
+                  variant="danger"
+                  onConfirm={handleConfirmRemoveFiles}
+                  onCancel={() => setConfirmRemove(false)}
+                />
+                <div className="gallery-detail-files-grid">
+                  {files.map((file) => (
+                    <div
+                      key={file.id}
                       style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover'
+                        aspectRatio: '4/3',
+                        border: selectedFileIds.has(file.id) ? '2px solid #000' : '1px solid rgba(0, 0, 0, 0.1)',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        cursor: 'pointer'
                       }}
-                    />
-                  </div>
-                ))}
-              </div>
+                      onClick={() => toggleFileSelection(file.id)}
+                    >
+                      <img
+                        src={file.thumbnail_url || file.file_url}
+                        alt={file.original_name}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                      />
+                      <input
+                        type="checkbox"
+                        checked={selectedFileIds.has(file.id)}
+                        onChange={() => toggleFileSelection(file.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select ${file.original_name || 'file'}`}
+                        style={{
+                          position: 'absolute',
+                          top: '8px',
+                          left: '8px',
+                          width: '20px',
+                          height: '20px',
+                          cursor: 'pointer',
+                          accentColor: '#000'
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </>

@@ -13,7 +13,7 @@ export default async function handler(req) {
   const url = new URL(req.url)
   const path = url.pathname.replace('/api/client', '')
 
-  // GET /api/client/settings - Public settings for client gallery access page (e.g. background image)
+  // GET /api/client/settings - Public site-wide settings (fallback background)
   if (path === '/settings' && req.method === 'GET') {
     try {
       const supabase = getSupabaseClient()
@@ -26,6 +26,25 @@ export default async function handler(req) {
       return successResponse({ client_access_background_url: backgroundUrl }, 200, corsHeaders())
     } catch (err) {
       console.error('Client settings GET error:', err)
+      return successResponse({ client_access_background_url: '' }, 200, corsHeaders())
+    }
+  }
+
+  // GET /api/client/settings/:token - Per-gallery settings (background for this gallery's access page)
+  const settingsTokenMatch = path.match(/^\/settings\/(.+)$/)
+  if (settingsTokenMatch && req.method === 'GET') {
+    const token = settingsTokenMatch[1]
+    try {
+      const supabase = getSupabaseClient()
+      const { data: gallery, error } = await supabase
+        .from('galleries')
+        .select('client_access_background_url')
+        .eq('access_slug', token)
+        .eq('is_active', true)
+        .single()
+      const url = (gallery?.client_access_background_url && String(gallery.client_access_background_url).trim()) || ''
+      return successResponse({ client_access_background_url: url }, 200, corsHeaders())
+    } catch (err) {
       return successResponse({ client_access_background_url: '' }, 200, corsHeaders())
     }
   }

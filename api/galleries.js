@@ -1,7 +1,7 @@
 import { requireAdmin } from './_middleware/auth.js'
 import { getSupabaseClient } from './_utils/supabase.js'
 import { generateQRCodeForSlug, generateAccessSlug } from './_utils/qr.js'
-import { uploadFileToR2, generateFilePath, getPresignedPutUrl } from './_utils/r2.js'
+import { uploadFileToR2, deleteFileFromR2, generateFilePath, getPresignedPutUrl, generateGalleryBackgroundPath } from './_utils/r2.js'
 import bcrypt from 'bcryptjs'
 import { successResponse, errorResponse, corsHeaders, parseBody } from './_utils/helpers.js'
 import { handleCORS } from './_middleware/auth.js'
@@ -212,6 +212,97 @@ export default async function handler(req, res) {
     }
   }
 
+  // DELETE /api/galleries/[id]/files - Remove one or more files (admin), body: { fileIds: number[] }
+  if (pathParts.length === 2 && pathParts[1] === 'files' && req.method === 'DELETE') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const fileIds = Array.isArray(body?.fileIds) ? body.fileIds.filter((id) => Number.isInteger(Number(id)) && Number(id) > 0).map((id) => Number(id)) : []
+      if (fileIds.length === 0) {
+        return errorResponse('Missing or invalid fileIds array', 400, 'VALIDATION_ERROR')
+      }
+      const supabase = getSupabaseClient()
+      const { data: rows, error: fetchError } = await supabase
+        .from('media_files')
+        .select('id, file_path')
+        .eq('gallery_id', galleryId)
+        .in('id', fileIds)
+      if (fetchError) {
+        return errorResponse('Failed to fetch files', 500, 'DATABASE_ERROR')
+      }
+      if (!rows || rows.length === 0) {
+        return successResponse({ deleted: 0, message: 'No matching files found' }, 200, corsHeaders())
+      }
+      const { deleteFileFromR2 } = await import('./_utils/r2.js')
+      await Promise.all(rows.map((row) => deleteFileFromR2(row.file_path).catch((err) => console.error('R2 delete error:', row.file_path, err))))
+      const { error: deleteError } = await supabase.from('media_files').delete().eq('gallery_id', galleryId).in('id', rows.map((r) => r.id))
+      if (deleteError) {
+        return errorResponse('Failed to delete file records', 500, 'DATABASE_ERROR')
+      }
+      return successResponse({ deleted: rows.length, message: `${rows.length} file(s) removed` }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Delete gallery files error:', err)
+      return errorResponse(err.message || 'Internal server error', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/galleries/[id]/background - Upload client access background image (admin)
+  if (pathParts.length === 2 && pathParts[1] === 'background' && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const contentType = req.headers['content-type'] || ''
+      if (!contentType.includes('multipart/form-data')) {
+        return errorResponse('Content-Type must be multipart/form-data', 400, 'VALIDATION_ERROR')
+      }
+      const supabase = getSupabaseClient()
+      const { data: gallery } = await supabase.from('galleries').select('id, client_access_background_url').eq('id', galleryId).single()
+      if (!gallery) return errorResponse('Gallery not found', 404, 'NOT_FOUND')
+      const { formidable } = await import('formidable')
+      const { tmpdir } = await import('os')
+      const uploadDir = tmpdir()
+      const [, files] = await new Promise((resolve, reject) => {
+        const form = formidable({ uploadDir, keepExtensions: true, maxFileSize: 20 * 1024 * 1024 })
+        form.parse(req, (err, f, files) => (err ? reject(err) : resolve([f, files])))
+      })
+      const file = files?.image?.[0] || files?.image
+      if (!file || !file.filepath) {
+        return errorResponse('Missing file: send as "image" in form', 400, 'VALIDATION_ERROR')
+      }
+      const buffer = readFileSync(file.filepath)
+      const originalName = file.originalFilename || file.newFilename || 'image.jpg'
+      const mime = file.mimetype || 'image/jpeg'
+      const filePath = generateGalleryBackgroundPath(galleryId, originalName)
+      let fileUrl
+      try {
+        const result = await uploadFileToR2(filePath, buffer, mime)
+        fileUrl = result.fileUrl
+      } catch (r2Err) {
+        console.error('Gallery background R2 error:', r2Err)
+        if (existsSync(file.filepath)) try { unlinkSync(file.filepath) } catch (_) {}
+        return errorResponse('Storage upload failed', 500, 'UPLOAD_ERROR')
+      }
+      if (existsSync(file.filepath)) try { unlinkSync(file.filepath) } catch (_) {}
+      if (gallery.client_access_background_url) {
+        const oldKey = (gallery.client_access_background_url || '').replace(/^https?:\/\/[^/]+/, '').replace(/^\//, '')
+        if (oldKey) deleteFileFromR2(oldKey).catch((e) => console.error('R2 delete old background:', e))
+      }
+      const { error: updateError } = await supabase.from('galleries').update({ client_access_background_url: fileUrl }).eq('id', galleryId)
+      if (updateError) {
+        return errorResponse('Failed to save background', 500, 'DATABASE_ERROR')
+      }
+      return successResponse({ client_access_background_url: fileUrl }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Gallery background upload error:', err)
+      return errorResponse(err.message || 'Upload failed', 500, 'INTERNAL_ERROR')
+    }
+  }
+
   // PUT /api/galleries/[id] - Update gallery
   if (pathParts.length === 1 && req.method === 'PUT') {
     try {
@@ -222,7 +313,15 @@ export default async function handler(req, res) {
 
       const supabase = getSupabaseClient()
       const body = await parseBody(req)
-      const { name, client_name, client_email, password, description, event_date } = body
+      const { name, client_name, client_email, password, description, event_date, client_access_background_url } = body
+
+      if (client_access_background_url !== undefined && (client_access_background_url === null || client_access_background_url === '')) {
+        const { data: current } = await supabase.from('galleries').select('client_access_background_url').eq('id', galleryId).single()
+        if (current?.client_access_background_url) {
+          const oldKey = (current.client_access_background_url || '').replace(/^https?:\/\/[^/]+/, '').replace(/^\//, '')
+          if (oldKey) deleteFileFromR2(oldKey).catch((e) => console.error('R2 delete gallery background:', e))
+        }
+      }
 
       const updateData = {}
       if (name) updateData.name = name
@@ -230,6 +329,7 @@ export default async function handler(req, res) {
       if (client_email !== undefined) updateData.client_email = client_email
       if (description !== undefined) updateData.description = description
       if (event_date !== undefined) updateData.event_date = event_date
+      if (client_access_background_url !== undefined) updateData.client_access_background_url = (client_access_background_url === null || client_access_background_url === '') ? null : client_access_background_url
       if (password) {
         updateData.password_hash = await bcrypt.hash(password, 10)
       }

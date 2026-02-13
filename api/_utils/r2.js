@@ -104,12 +104,21 @@ export function generateFilePath(galleryId, originalFileName) {
 }
 
 /**
- * Generate file path for client access background (admin-uploaded)
+ * Generate file path for client access background (admin-uploaded, site-wide)
  */
 export function generateClientAccessBackgroundPath(originalFileName) {
   const timestamp = Date.now()
   const sanitized = (originalFileName || 'image.jpg').replace(/[^a-zA-Z0-9.-]/g, '_')
   return `client-access/${timestamp}-${sanitized}`
+}
+
+/**
+ * Generate file path for per-gallery client access background
+ */
+export function generateGalleryBackgroundPath(galleryId, originalFileName) {
+  const timestamp = Date.now()
+  const sanitized = (originalFileName || 'image.jpg').replace(/[^a-zA-Z0-9.-]/g, '_')
+  return `client-access/galleries/${galleryId}/${timestamp}-${sanitized}`
 }
 
 /**
