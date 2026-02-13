@@ -257,7 +257,7 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
           />
         </div>
 
-        <div style={{ marginBottom: '32px' }}>
+        <div className="gallery-form-field" style={{ marginBottom: '32px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 400 }}>
             Client access background (optional)
           </label>
@@ -272,19 +272,22 @@ const GalleryForm = ({ galleryId, onSave, onCancel }) => {
               <button
                 type="button"
                 onClick={() => { setRemoveBackground(true); setCurrentBackgroundUrl(''); setBackgroundFile(null); }}
-                style={{ marginTop: 8, padding: '8px 16px', fontSize: 14, background: 'transparent', border: '1px solid #c00', color: '#c00', borderRadius: 4, cursor: 'pointer' }}
+                className="gallery-form-btn gallery-form-btn--outline gallery-form-btn--danger"
               >
                 Remove background
               </button>
             </div>
           )}
           {(!galleryId || !currentBackgroundUrl || removeBackground || backgroundFile) && (
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => { setBackgroundFile(e.target.files?.[0] || null); if (galleryId) setRemoveBackground(false); }}
-              style={{ display: 'block', fontSize: 14 }}
-            />
+            <label className="gallery-form-upload-label">
+              <span className="gallery-form-upload-text">Choose background image</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => { setBackgroundFile(e.target.files?.[0] || null); if (galleryId) setRemoveBackground(false); }}
+                className="gallery-form-upload-input"
+              />
+            </label>
           )}
           {backgroundFile && <p style={{ fontSize: 13, color: '#525252', marginTop: 8 }}>New image selected: {backgroundFile.name}</p>}
         </div>

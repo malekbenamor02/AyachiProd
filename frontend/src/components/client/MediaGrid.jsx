@@ -8,6 +8,7 @@ const DESCRIPTION_PREVIEW_LENGTH = 120
 const MediaGrid = ({ files, gallery, accessToken }) => {
   const [selectedImage, setSelectedImage] = useState(null)
   const [selectedIds, setSelectedIds] = useState(new Set())
+  const [selectionMode, setSelectionMode] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [dimensions, setDimensions] = useState({})
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
@@ -139,45 +140,42 @@ const MediaGrid = ({ files, gallery, accessToken }) => {
           ) : null}
         </div>
 
-        <div className="media-grid-toolbar" style={{
-          marginBottom: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          flexWrap: 'wrap'
-        }}>
-          <button
-            type="button"
-            onClick={selectAll}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: 'transparent',
-              border: '1px solid #000',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            {selectedIds.size === files.length ? 'Deselect all' : 'Select all'}
-          </button>
-          {selectedIds.size > 0 && (
+        <div className="media-grid-toolbar client-gallery-toolbar">
+          {!selectionMode ? (
             <button
               type="button"
-              onClick={downloadSelected}
-              disabled={downloading}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#000',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: downloading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                opacity: downloading ? 0.7 : 1
-              }}
+              onClick={() => setSelectionMode(true)}
+              className="client-gallery-btn client-gallery-btn--primary"
             >
-              {downloading ? 'Downloading…' : `Download ${selectedIds.size} file${selectedIds.size !== 1 ? 's' : ''}`}
+              Select
             </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
+                className="client-gallery-btn client-gallery-btn--outline"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={selectAll}
+                className="client-gallery-btn client-gallery-btn--outline"
+              >
+                {selectedIds.size === files.length ? 'Deselect all' : 'Select all'}
+              </button>
+              {selectedIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={downloadSelected}
+                  disabled={downloading}
+                  className="client-gallery-btn client-gallery-btn--primary"
+                >
+                  {downloading ? 'Downloading…' : `Download ${selectedIds.size} file${selectedIds.size !== 1 ? 's' : ''}`}
+                </button>
+              )}
+            </>
           )}
         </div>
 
@@ -185,43 +183,36 @@ const MediaGrid = ({ files, gallery, accessToken }) => {
           {files.map((file) => (
             <div
               key={file.id}
+              className={`client-gallery-card ${selectionMode ? 'client-gallery-card--selecting' : ''} ${selectedIds.has(file.id) ? 'client-gallery-card--selected' : ''}`}
               style={{
                 position: 'relative',
                 aspectRatio: getAspectRatio(file),
                 overflow: 'hidden',
                 borderRadius: '8px',
-                cursor: 'pointer',
-                border: selectedIds.has(file.id) ? '3px solid #000' : '1px solid rgba(0, 0, 0, 0.1)',
+                cursor: selectionMode ? 'pointer' : 'pointer',
                 boxSizing: 'border-box',
                 backgroundColor: '#f5f5f5'
               }}
-              onClick={() => setSelectedImage(file)}
+              onClick={() => {
+                if (selectionMode) {
+                  toggleSelect({ stopPropagation: () => {} }, file.id)
+                } else {
+                  setSelectedImage(file)
+                }
+              }}
             >
-              <div
-                className="media-grid-select"
-                style={{
-                  position: 'absolute',
-                  top: '12px',
-                  left: '12px',
-                  zIndex: 2,
-                  width: '24px',
-                  height: '24px',
-                  border: '2px solid #fff',
-                  borderRadius: '4px',
-                  backgroundColor: selectedIds.has(file.id) ? '#000' : 'rgba(0,0,0,0.3)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                onClick={(e) => toggleSelect(e, file.id)}
-              >
-                {selectedIds.has(file.id) && (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
-                    <path d="M5 12l5 5L20 7" />
-                  </svg>
-                )}
-              </div>
+              {selectionMode && (
+                <div
+                  className="client-gallery-card-checkbox"
+                  onClick={(e) => { e.stopPropagation(); toggleSelect(e, file.id); }}
+                >
+                  {selectedIds.has(file.id) && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
+                      <path d="M5 12l5 5L20 7" />
+                    </svg>
+                  )}
+                </div>
+              )}
               {file.file_type === 'image' ? (
                 <LazyLoadImage
                   src={file.thumbnail_url || file.file_url}

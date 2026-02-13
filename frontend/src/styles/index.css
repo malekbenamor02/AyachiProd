@@ -732,6 +732,76 @@ body {
 .client-gallery-see-more:hover {
   opacity: 0.7;
 }
+.client-gallery-toolbar {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.client-gallery-btn {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.client-gallery-btn:hover {
+  opacity: 0.9;
+}
+
+.client-gallery-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.client-gallery-btn--primary {
+  background-color: #000000;
+  color: #FFFFFF;
+  border: none;
+}
+
+.client-gallery-btn--outline {
+  background-color: transparent;
+  color: #000000;
+  border: 1px solid #000000;
+}
+
+.client-gallery-card--selected {
+  border: 3px solid #000 !important;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+}
+
+.client-gallery-card:not(.client-gallery-card--selected) {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.client-gallery-card-checkbox {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #fff;
+  border-radius: 4px;
+  background-color: rgba(0,0,0,0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+}
+
+.client-gallery-card--selected .client-gallery-card-checkbox {
+  background-color: #000;
+}
+
 .client-gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -900,6 +970,69 @@ body {
 
 .admin-dashboard-logout-button:hover .logout-arrow {
   transform: translateX(4px);
+}
+
+/* Gallery form – theme buttons and background upload */
+.gallery-form-btn {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.gallery-form-btn:hover {
+  opacity: 0.9;
+}
+
+.gallery-form-btn--outline {
+  background-color: transparent;
+  color: #000000;
+  border: 1px solid #000000;
+}
+
+.gallery-form-btn--danger {
+  border-color: #c00;
+  color: #c00;
+  margin-top: 8px;
+}
+
+.gallery-form-btn--danger:hover {
+  opacity: 0.85;
+}
+
+.gallery-form-upload-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 24px;
+  background-color: #000000;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.gallery-form-upload-label:hover {
+  opacity: 0.9;
+}
+
+.gallery-form-upload-text {
+  pointer-events: none;
+}
+
+.gallery-form-upload-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
 }
 
 .admin-dashboard-stats {
