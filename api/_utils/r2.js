@@ -46,6 +46,19 @@ export async function deleteFileFromR2(fileName) {
 }
 
 /**
+ * Generate presigned URL for upload (PUT). Client uploads file directly to R2 to avoid body size limits.
+ */
+export async function getPresignedPutUrl(filePath, contentType = 'application/octet-stream', expiresIn = 900) {
+  const command = new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: filePath,
+    ContentType: contentType,
+  })
+  const url = await getSignedUrl(r2Client, command, { expiresIn })
+  return url
+}
+
+/**
  * Generate presigned URL for download
  */
 export async function getPresignedUrl(fileName, expiresIn = 3600) {

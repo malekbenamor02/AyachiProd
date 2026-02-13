@@ -238,7 +238,8 @@ You may need to purge cache when:
 
 ### CORS Headers for R2
 
-Configure in R2 bucket CORS settings:
+Configure in R2 bucket CORS settings (Dashboard → R2 → your bucket → Settings → CORS policy).  
+**Include `PUT`** so that large work-image uploads can be sent directly from the browser (avoids 413):
 
 ```json
 [
@@ -247,7 +248,7 @@ Configure in R2 bucket CORS settings:
       "https://ayachiprod.com",
       "https://www.ayachiprod.com"
     ],
-    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedMethods": ["GET", "HEAD", "PUT"],
     "AllowedHeaders": ["*"],
     "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 3600

@@ -1,6 +1,6 @@
 import { requireAdmin } from './_middleware/auth.js'
 import { getSupabaseClient } from './_utils/supabase.js'
-import { uploadFileToR2, deleteFileFromR2, generateSectionFilePath, generateSectionWorkImageFilePath } from './_utils/r2.js'
+import { uploadFileToR2, deleteFileFromR2, generateSectionFilePath, generateSectionWorkImageFilePath, getPresignedPutUrl } from './_utils/r2.js'
 import { successResponse, errorResponse, corsHeaders, parseBody } from './_utils/helpers.js'
 import { handleCORS } from './_middleware/auth.js'
 import { readFileSync, unlinkSync, existsSync } from 'fs'
@@ -348,7 +348,80 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST /api/sections/:sectionId/work-images/upload - Add work media: one or many files, any type (admin)
+  // POST /api/sections/:sectionId/work-images/upload-url - Get presigned URL for direct upload (avoids 413, large files)
+  if (pathParts.length === 3 && pathParts[2] === 'upload-url' && isWorkImages && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const filename = (body?.filename && String(body.filename).trim()) || 'file'
+      const contentType = (body?.content_type && String(body.content_type).trim()) || 'application/octet-stream'
+      const supabase = getSupabaseClient()
+      const { data: section } = await supabase.from('homepage_sections').select('id').eq('id', sectionId).single()
+      if (!section) {
+        return errorResponse('Section not found', 404, 'NOT_FOUND')
+      }
+      const filePath = generateSectionWorkImageFilePath(sectionId, filename)
+      const putUrl = await getPresignedPutUrl(filePath, contentType, 900)
+      const CDN_URL = process.env.R2_CDN_URL || ''
+      const fileUrl = CDN_URL ? `${CDN_URL.replace(/\/$/, '')}/${filePath}` : putUrl
+      return successResponse({ putUrl, filePath, fileUrl }, 200, corsHeaders())
+    } catch (err) {
+      console.error('Work images upload-url error:', err)
+      return errorResponse(err.message || 'Failed to get upload URL', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/sections/:sectionId/work-images/confirm - Register file after direct upload to R2
+  if (pathParts.length === 3 && pathParts[2] === 'confirm' && isWorkImages && req.method === 'POST') {
+    try {
+      const authResult = requireAdmin(req)
+      if (!authResult.user) {
+        return { ...authResult, headers: { ...corsHeaders(), ...(authResult.headers || {}) } }
+      }
+      const body = await parseBody(req)
+      const filePath = body?.filePath && String(body.filePath).trim()
+      if (!filePath) {
+        return errorResponse('Missing filePath', 400, 'VALIDATION_ERROR')
+      }
+      function mimeToFileType(mime) {
+        if (!mime) return 'file'
+        if (mime.startsWith('image/')) return 'image'
+        if (mime.startsWith('video/')) return 'video'
+        return 'file'
+      }
+      const fileType = body?.file_type ? String(body.file_type).trim() : 'file'
+      const altText = (body?.alt_text && String(body.alt_text).trim()) || ''
+      const CDN_URL = process.env.R2_CDN_URL || ''
+      const fileUrl = CDN_URL ? `${CDN_URL.replace(/\/$/, '')}/${filePath}` : filePath
+      const supabase = getSupabaseClient()
+      const { count: existingCount } = await supabase.from('section_work_images').select('*', { count: 'exact', head: true }).eq('section_id', sectionId)
+      const displayOrder = existingCount ?? 0
+      const { data: row, error } = await supabase
+        .from('section_work_images')
+        .insert({
+          section_id: sectionId,
+          file_path: filePath,
+          file_url: fileUrl,
+          alt_text: altText,
+          display_order: displayOrder,
+          file_type: mimeToFileType(fileType),
+        })
+        .select('id, file_url, alt_text, display_order, file_type')
+        .single()
+      if (error) {
+        return errorResponse(error.message || 'Failed to save record', 500, 'DATABASE_ERROR')
+      }
+      return successResponse(row, 201, corsHeaders())
+    } catch (err) {
+      console.error('Work images confirm error:', err)
+      return errorResponse(err.message || 'Failed to confirm upload', 500, 'INTERNAL_ERROR')
+    }
+  }
+
+  // POST /api/sections/:sectionId/work-images/upload - Add work media: one or many files (admin, small files only; use upload-url for large)
   if (pathParts.length === 3 && pathParts[2] === 'upload' && isWorkImages && req.method === 'POST') {
     try {
       const authResult = requireAdmin(req)

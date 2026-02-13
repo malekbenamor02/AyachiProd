@@ -62,42 +62,53 @@ export const sectionsService = {
   },
 
   /**
-   * Upload multiple work images one-by-one with progress (0-100).
-   * New FormData per attempt (body is consumed after send). Retries 4x, 2 min timeout.
+   * Upload work images via presigned URL (direct to R2). Avoids 413 - supports large files.
+   * Flow: get upload-url -> PUT file to R2 -> confirm. One file at a time with progress.
    */
   async uploadWorkImagesWithProgress(sectionId, files, altText = '', onProgress) {
     const list = Array.isArray(files) ? files : [files]
     if (list.length === 0) return { successCount: 0, failedCount: 0, lastError: null }
     const total = list.length
-    const UPLOAD_TIMEOUT_MS = 2 * 60 * 1000
     const MAX_RETRIES = 4
     const RETRY_DELAY_MS = 1500
     const DELAY_BETWEEN_FILES_MS = 200
     let successCount = 0
     let lastError = null
 
+    function fileTypeFromMime(mime) {
+      if (!mime) return 'file'
+      if (mime.startsWith('image/')) return 'image'
+      if (mime.startsWith('video/')) return 'video'
+      return 'file'
+    }
+
     for (let i = 0; i < list.length; i++) {
       if (i > 0) await new Promise((r) => setTimeout(r, DELAY_BETWEEN_FILES_MS))
       onProgress?.(Math.round((i / total) * 100))
 
       const file = list[i]
+      const filename = file.name || 'file'
+      const contentType = file.type || 'application/octet-stream'
       let done = false
       for (let attempt = 0; attempt < MAX_RETRIES && !done; attempt++) {
         if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
-        const formData = new FormData()
-        formData.append('image', file)
-        if (altText) formData.append('alt_text', altText)
         try {
-          await api.post(`/api/sections/${sectionId}/work-images/upload`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-            timeout: UPLOAD_TIMEOUT_MS,
-            onUploadProgress: (ev) => {
-              if (ev.total && ev.total > 0) {
-                const filePct = ev.loaded / ev.total
-                const overall = ((i + filePct) / total) * 100
-                onProgress?.(Math.round(Math.min(99, overall)))
-              }
-            },
+          const { data: urlData } = await api.post(`/api/sections/${sectionId}/work-images/upload-url`, {
+            filename,
+            content_type: contentType,
+          })
+          const { putUrl, filePath } = urlData || {}
+          if (!putUrl || !filePath) throw new Error('Invalid upload URL response')
+          const putRes = await fetch(putUrl, {
+            method: 'PUT',
+            body: file,
+            headers: { 'Content-Type': contentType },
+          })
+          if (!putRes.ok) throw new Error(`Upload failed: ${putRes.status}`)
+          await api.post(`/api/sections/${sectionId}/work-images/confirm`, {
+            filePath,
+            file_type: fileTypeFromMime(contentType),
+            alt_text: altText || '',
           })
           successCount += 1
           done = true
