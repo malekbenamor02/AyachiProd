@@ -549,10 +549,10 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
                               </div>
                               {img.file_type === 'video' ? (
                                 <video src={img.file_url} className="sections-editor-work-images-thumb" muted preload="metadata" />
-                              ) : img.file_type === 'file' ? (
-                                <div className="sections-editor-work-images-thumb sections-editor-work-images-thumb-file">File</div>
-                              ) : (
+                              ) : (img.file_type === 'image' || (img.file_type === 'file' && img.file_url)) ? (
                                 <img src={img.file_url} alt={img.alt_text || ''} className="sections-editor-work-images-thumb" />
+                              ) : (
+                                <div className="sections-editor-work-images-thumb sections-editor-work-images-thumb-file">File</div>
                               )}
                               <button
                                 type="button"

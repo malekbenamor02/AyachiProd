@@ -484,13 +484,14 @@ export default async function handler(req, res) {
         filePath,
         sortedParts.map((p) => ({ PartNumber: p.partNumber, ETag: `"${p.etag.replace(/"/g, '')}"` }))
       )
-      function mimeToFileType(mime) {
-        if (!mime) return 'file'
-        if (mime.startsWith('image/')) return 'image'
-        if (mime.startsWith('video/')) return 'video'
+      function toFileType(value) {
+        const v = (value && String(value).trim()) || ''
+        if (v === 'image' || v === 'video' || v === 'file') return v
+        if (v.startsWith('image/')) return 'image'
+        if (v.startsWith('video/')) return 'video'
         return 'file'
       }
-      const fileType = body?.file_type ? String(body.file_type).trim() : 'file'
+      const fileType = toFileType(body?.file_type)
       const altText = (body?.alt_text && String(body.alt_text).trim()) || ''
       const supabase = getSupabaseClient()
       const { count: existingCount } = await supabase.from('section_work_images').select('*', { count: 'exact', head: true }).eq('section_id', sectionId)
@@ -503,7 +504,7 @@ export default async function handler(req, res) {
           file_url: fileUrl,
           alt_text: altText,
           display_order: displayOrder,
-          file_type: mimeToFileType(fileType),
+          file_type: fileType,
         })
         .select('id, file_url, alt_text, display_order, file_type')
         .single()
