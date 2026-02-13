@@ -55,8 +55,8 @@ const PasswordPrompt = ({ token, onSuccess, backgroundUrl }) => {
               position: 'absolute',
               inset: 0,
               backgroundColor: 'rgba(255, 255, 255, 0.4)',
-              backdropFilter: 'blur(2px)',
-              WebkitBackdropFilter: 'blur(2px)'
+              backdropFilter: 'blur(1px)',
+              WebkitBackdropFilter: 'blur(1px)'
             }}
             aria-hidden="true"
           />
