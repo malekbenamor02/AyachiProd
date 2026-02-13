@@ -253,15 +253,26 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       if (files.length === 1) {
         await sectionsService.uploadWorkImage(sectionId, files[0])
         setUploadWorkProgress(100)
+        setToast('File added')
       } else {
-        await sectionsService.uploadWorkImagesWithProgress(
+        const result = await sectionsService.uploadWorkImagesWithProgress(
           sectionId,
           files,
           '',
           (percent) => setUploadWorkProgress((p) => (percent != null ? percent : p))
         )
+        setUploadWorkProgress(100)
+        if (result.failedCount > 0) {
+          setToast(result.successCount > 0 ? `${result.successCount} added` : '')
+          setError(
+            result.successCount > 0
+              ? `${result.failedCount} of ${files.length} failed: ${result.lastError || 'Unknown error'}`
+              : (result.lastError || 'Upload failed')
+          )
+        } else {
+          setToast(`${files.length} files added`)
+        }
       }
-      setToast(files.length === 1 ? 'File added' : `${files.length} files added`)
       await loadWorkImages(sectionId)
       const ref = workImageInputRefs.current[sectionId]
       if (ref) ref.value = ''

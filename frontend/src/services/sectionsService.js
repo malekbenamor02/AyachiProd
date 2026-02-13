@@ -56,34 +56,70 @@ export const sectionsService = {
     if (altText) formData.append('alt_text', altText)
     const { data } = await api.post(`/api/sections/${sectionId}/work-images/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 2 * 60 * 1000,
     })
     return data?.data
   },
 
   /**
    * Upload multiple work images one-by-one with progress (0-100).
-   * Uses onUploadProgress so % moves during each file (not stuck at 0%).
+   * Retries each file up to 3 times, 2 min timeout per request.
+   * Returns { successCount, failedCount, lastError } so caller can show partial success.
    */
   async uploadWorkImagesWithProgress(sectionId, files, altText = '', onProgress) {
     const list = Array.isArray(files) ? files : [files]
-    if (list.length === 0) return
+    if (list.length === 0) return { successCount: 0, failedCount: 0, lastError: null }
     const total = list.length
+    const UPLOAD_TIMEOUT_MS = 2 * 60 * 1000
+    const MAX_RETRIES = 3
+    const RETRY_DELAY_MS = 1000
+    let successCount = 0
+    let lastError = null
+
     for (let i = 0; i < list.length; i++) {
       onProgress?.(Math.round((i / total) * 100))
       const formData = new FormData()
       formData.append('image', list[i])
       if (altText) formData.append('alt_text', altText)
-      await api.post(`/api/sections/${sectionId}/work-images/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (ev) => {
-          if (ev.total && ev.total > 0) {
-            const filePct = ev.loaded / ev.total
-            const overall = ((i + filePct) / total) * 100
-            onProgress?.(Math.round(Math.min(99, overall)))
+
+      let done = false
+      for (let attempt = 0; attempt < MAX_RETRIES && !done; attempt++) {
+        if (attempt > 0) {
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+        }
+        try {
+          await api.post(`/api/sections/${sectionId}/work-images/upload`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: UPLOAD_TIMEOUT_MS,
+            onUploadProgress: (ev) => {
+              if (ev.total && ev.total > 0) {
+                const filePct = ev.loaded / ev.total
+                const overall = ((i + filePct) / total) * 100
+                onProgress?.(Math.round(Math.min(99, overall)))
+              }
+            },
+          })
+          successCount += 1
+          done = true
+        } catch (err) {
+          const msg =
+            (err.response?.data?.error && String(err.response.data.error)) ||
+            (err.message && String(err.message)) ||
+            'Upload failed'
+          lastError = msg
+          if (attempt === MAX_RETRIES - 1) {
+            // last attempt failed, continue to next file
+            break
           }
-        },
-      })
+        }
+      }
       onProgress?.(Math.round(((i + 1) / total) * 100))
+    }
+
+    return {
+      successCount,
+      failedCount: total - successCount,
+      lastError: total - successCount > 0 ? lastError : null,
     }
   },
 
