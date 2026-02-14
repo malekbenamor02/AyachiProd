@@ -32,6 +32,14 @@ function errorMessage(err, fallback = 'Something went wrong') {
   return fallback
 }
 
+// Text only: letters (any language), spaces, hyphens, apostrophes — no digits or special symbols
+function isTextOnly(str) {
+  if (typeof str !== 'string') return false
+  const s = str.trim()
+  if (!s.length) return false
+  return /^[\p{L}\p{M}\s\-']+$/u.test(s)
+}
+
 const SectionsEditor = ({ onBack, onStatsRefresh }) => {
   const [sections, setSections] = useState([])
   const [categories, setCategories] = useState([])
@@ -60,6 +68,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
   })
   const [addFile, setAddFile] = useState(null)
   const addFileInputRef = React.useRef(null)
+  const [addFormErrors, setAddFormErrors] = useState({ image: '', title: '', category: '', month: '', year: '' })
   const [expandedWorkSectionId, setExpandedWorkSectionId] = useState(null)
   const [workImagesMap, setWorkImagesMap] = useState({})
   const [uploadingWorkSectionId, setUploadingWorkSectionId] = useState(null)
@@ -106,7 +115,14 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
 
   const handleAddCategory = async () => {
     const name = newCategoryName.trim()
-    if (!name) return
+    if (!name) {
+      setError('Category name is required')
+      return
+    }
+    if (!isTextOnly(name)) {
+      setError('Category must contain only letters and spaces (no numbers or special characters)')
+      return
+    }
     setError('')
     try {
       const created = await sectionCategoriesService.createCategory(name)
@@ -120,18 +136,43 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
     }
   }
 
+  const validateAddForm = () => {
+    const file = addFile || (addFileInputRef.current?.files?.[0])
+    const errors = { image: '', title: '', category: '', month: '', year: '' }
+    if (!file || !file.type.startsWith('image/')) {
+      errors.image = 'Please select an image file'
+    }
+    const titleTrim = addForm.title.trim()
+    if (!titleTrim) {
+      errors.title = 'Title is required'
+    } else if (!isTextOnly(addForm.title)) {
+      errors.title = 'Title must contain only letters and spaces (no numbers or special characters)'
+    }
+    if (!addForm.category_id) {
+      errors.category = 'Please select a category or add a new one'
+    }
+    if (!addForm.section_month) {
+      errors.month = 'Please select a month'
+    }
+    if (!addForm.section_year) {
+      errors.year = 'Please select a year'
+    }
+    setAddFormErrors(errors)
+    return !Object.values(errors).some(Boolean)
+  }
+
   const handleAdd = async (e) => {
     e.preventDefault()
-    const file = addFile || (addFileInputRef.current?.files?.[0])
-    if (!file || !file.type.startsWith('image/')) {
-      setError('Please select an image file')
+    setError('')
+    if (!validateAddForm()) {
+      setError('Please fill all required fields correctly.')
       return
     }
+    const file = addFile || (addFileInputRef.current?.files?.[0])
     setUploading(true)
-    setError('')
     try {
       await sectionsService.uploadSection(file, {
-        title: addForm.title || 'Untitled',
+        title: addForm.title.trim(),
         category_id: addForm.category_id || '',
         section_month: addForm.section_month || '',
         section_year: addForm.section_year || '',
@@ -139,6 +180,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
       })
       setAddForm({ title: '', category_id: '', section_month: '', section_year: '', alt_text: '' })
       setAddFile(null)
+      setAddFormErrors({ image: '', title: '', category: '', month: '', year: '' })
       if (addFileInputRef.current) addFileInputRef.current.value = ''
       setToast('Section added')
       await load()
@@ -344,7 +386,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
         <h3 className="sections-editor-add-title">Add new section</h3>
         <div className="sections-editor-add-fields">
           <label className="sections-editor-field sections-editor-field-file">
-            <span className="sections-editor-label">Image</span>
+            <span className="sections-editor-label">Image <span className="sections-editor-required">*</span></span>
             <span className="sections-editor-file-wrap">
               <input
                 ref={addFileInputRef}
@@ -352,32 +394,37 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
                 accept="image/*"
                 required
                 disabled={uploading}
-                onChange={(e) => setAddFile(e.target.files?.[0])}
+                onChange={(e) => { setAddFile(e.target.files?.[0]); setAddFormErrors((err) => ({ ...err, image: '' })) }}
                 className="sections-editor-file-input"
+                aria-invalid={!!addFormErrors.image}
               />
               <span className="sections-editor-file-label">
                 {addFile ? addFile.name : 'Choose image'}
               </span>
             </span>
+            {addFormErrors.image && <span className="sections-editor-field-error" role="alert">{addFormErrors.image}</span>}
           </label>
           <label className="sections-editor-field">
-            <span className="sections-editor-label">Title</span>
+            <span className="sections-editor-label">Title <span className="sections-editor-required">*</span></span>
             <input
               type="text"
               placeholder="e.g. Wedding Collection"
               value={addForm.title}
-              onChange={(e) => setAddForm((f) => ({ ...f, title: e.target.value }))}
+              required
+              onChange={(e) => { setAddForm((f) => ({ ...f, title: e.target.value })); setAddFormErrors((err) => ({ ...err, title: '' })) }}
               className="sections-editor-input"
+              aria-invalid={!!addFormErrors.title}
             />
+            {addFormErrors.title && <span className="sections-editor-field-error" role="alert">{addFormErrors.title}</span>}
           </label>
           <label className="sections-editor-field">
-            <span className="sections-editor-label">Category</span>
+            <span className="sections-editor-label">Category <span className="sections-editor-required">*</span></span>
             {!showNewCategory ? (
               <div className="sections-editor-category-row">
                 <ThemeSelect
                   name="category_id"
                   value={addForm.category_id}
-                  onChange={(v) => setAddForm((f) => ({ ...f, category_id: v }))}
+                  onChange={(v) => { setAddForm((f) => ({ ...f, category_id: v })); setAddFormErrors((err) => ({ ...err, category: '' })) }}
                   options={[{ value: '', label: 'Select category' }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]}
                   placeholder="Select category"
                   className="sections-editor-input sections-editor-select"
@@ -388,7 +435,7 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
               <div className="sections-editor-category-row">
                 <input
                   type="text"
-                  placeholder="New category name"
+                  placeholder="New category name (letters and spaces only)"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   className="sections-editor-input"
@@ -398,28 +445,33 @@ const SectionsEditor = ({ onBack, onStatsRefresh }) => {
                 <button type="button" onClick={() => { setShowNewCategory(false); setNewCategoryName('') }} className="sections-editor-btn sections-editor-btn-ghost" style={{ flexShrink: 0 }}>Cancel</button>
               </div>
             )}
+            {addFormErrors.category && <span className="sections-editor-field-error" role="alert">{addFormErrors.category}</span>}
           </label>
           <label className="sections-editor-field">
-            <span className="sections-editor-label">Month</span>
+            <span className="sections-editor-label">Month <span className="sections-editor-required">*</span></span>
             <ThemeSelect
               name="section_month"
               value={addForm.section_month}
-              onChange={(v) => setAddForm((f) => ({ ...f, section_month: v }))}
+              onChange={(v) => { setAddForm((f) => ({ ...f, section_month: v })); setAddFormErrors((err) => ({ ...err, month: '' })) }}
               options={MONTH_OPTIONS}
               placeholder="—"
               className="sections-editor-input sections-editor-select"
+              aria-invalid={!!addFormErrors.month}
             />
+            {addFormErrors.month && <span className="sections-editor-field-error" role="alert">{addFormErrors.month}</span>}
           </label>
           <label className="sections-editor-field sections-editor-field-year">
-            <span className="sections-editor-label">Year</span>
+            <span className="sections-editor-label">Year <span className="sections-editor-required">*</span></span>
             <ThemeSelect
               name="section_year"
               value={addForm.section_year}
-              onChange={(v) => setAddForm((f) => ({ ...f, section_year: v }))}
+              onChange={(v) => { setAddForm((f) => ({ ...f, section_year: v })); setAddFormErrors((err) => ({ ...err, year: '' })) }}
               options={YEAR_SELECT_OPTIONS}
               placeholder="—"
               className="sections-editor-input sections-editor-select"
+              aria-invalid={!!addFormErrors.year}
             />
+            {addFormErrors.year && <span className="sections-editor-field-error" role="alert">{addFormErrors.year}</span>}
           </label>
           <div className="sections-editor-field sections-editor-field-submit">
             <button type="submit" disabled={uploading} className="sections-editor-btn sections-editor-btn-primary">

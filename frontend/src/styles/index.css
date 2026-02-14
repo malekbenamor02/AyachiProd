@@ -1686,6 +1686,14 @@ body {
   color: var(--theme-fg);
   font-family: var(--theme-font);
 }
+.sections-editor-required {
+  color: #dc2626;
+}
+.sections-editor-field-error {
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 2px;
+}
 .sections-editor-input {
   padding: 10px 14px;
   border: 1px solid var(--theme-border);
